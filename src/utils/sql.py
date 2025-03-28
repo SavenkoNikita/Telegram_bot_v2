@@ -4,7 +4,7 @@ import os
 import sqlite3
 
 
-class Work_with_DB:
+class WorkWithDb:
     """Класс для обмена с базой данных"""
 
     logger = logging.getLogger("Work_with_DB")
@@ -13,8 +13,8 @@ class Work_with_DB:
         self.db_path = self.create_db_if_not()
         self.sqlite_connection = sqlite3.connect(self.db_path,
                                                  detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
-        self.sqlite_connection.execute("PRAGMA foreign_keys = 1")
-        self.cursor = None
+        # self.sqlite_connection.execute("PRAGMA foreign_keys = ON;")
+        # self.cursor = self.sqlite_connection.cursor()
         self.tables = {
             'users': ['"user_id" INTEGER NOT NULL UNIQUE',
                       '"user_first_name" TEXT',
@@ -43,15 +43,35 @@ class Work_with_DB:
                        '"text_event" TEXT NOT NULL'],
             'in_out': ['"last_checkpoint" TEXT', ]
         }
-        self.is_connected = self.sqlite_connection is not None
+        # self.is_connected = self.sqlite_connection is not None
 
     def __enter__(self):
+        """Метод, который выполняется при входе в контекстный менеджер.
+        Устанавливает соединение с базой данных и открывает курсор.
+        
+        Использование:
+        with WorkWithDb() as db:
+            # Работа с базой данных через объект db
+        """
         self.logger.info("Соединение с базой данных установлено.")
-        self.initialize_connection()
-        self.cursor = self.sqlite_connection.cursor()
-        return self
+        self.sqlite_connection = sqlite3.connect(self.db_path,
+                                                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
+        return self.sqlite_connection
 
     def __exit__(self, exc_type: type, exc_val: BaseException, exc_tb: object) -> None:
+        """
+        Метод вызывается при выходе из контекстного менеджера. 
+        
+        Если во время работы в контекстном менеджере возникает ошибка, то выполняется откат транзакции (rollback).
+        В противном случае все изменения фиксируются (commit). В любом случае соединение с базой данных закрывается.
+        
+        Использование:
+        with WorkWithDb() as db:
+            # Выполнение операций с объектом db
+            # Например, вызов методов для работы с базой данных
+        
+        Если в блоке `with` возникает исключение, коммит не будет выполнен, а изменения будут отменены.
+        """
         try:
             if exc_type or exc_val or exc_tb:
                 self.logger.error(f"Откат транзакции из-за ошибки: {exc_val}")
@@ -63,15 +83,25 @@ class Work_with_DB:
             self.close_connection()
 
     def close_connection(self):
-        """Закрывает соединение с базой данных."""
+        """Закрывает соединение с базой данных.
+        
+        Данный метод завершает текущее соединение с базой данных SQLite. 
+        Он вызывается автоматически при завершении работы объекта (например, при выходе 
+        из контекстного менеджера `with`). Если закрытие соединения происходит с ошибкой, 
+        то делается запись об ошибке в журнал логирования.
+        
+        Использование:
+        with WorkWithDb() as db:
+            # Работа с базой данных через объект db
+            pass
+        # При завершении блока `with` метод close_connection автоматически закроет соединение.
+        """
         try:
             if self.sqlite_connection:
                 self.sqlite_connection.close()
                 self.logger.info("Соединение с базой данных закрыто.")
         except sqlite3.Error as e:
             self.logger.error(f"Ошибка при закрытии соединения: {e}")
-        finally:
-            self.cursor = None
 
     def create_db_if_not(self):
         db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'telegram_bot.db')
@@ -87,40 +117,30 @@ class Work_with_DB:
 
         if not self.check_table_exists(name):
             columns = ", ".join(self.tables[name])
-            query = f'CREATE TABLE IF NOT EXISTS {name} (id INTEGER PRIMARY KEY AUTOINCREMENT, {columns})'
-            self.execute_query(query)
-            self.logger.info(f'Таблица "{name}" успешно создана с колонками: {columns}')
+            create_query = f'CREATE TABLE {name} (id INTEGER PRIMARY KEY AUTOINCREMENT, {columns})'
+            self.logger.debug(f"Executing query to create table '{name}' with columns: {columns}")
+            with self.sqlite_connection as conn:
+                conn.execute(create_query)
+                conn.execute("PRAGMA foreign_keys = ON;")
 
     def check_table_exists(self, name):
         """Проверяет наличие таблицы в базе данных."""
         query = "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?"
-        self.cursor = self.cursor or self.sqlite_connection.cursor()
-        self.cursor.execute(query, (name,))
-        return self.cursor.fetchone() is not None
-        """Проверяет наличие таблицы в базе данных."""
-
-        query = "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?"
-        if self.cursor is None:
-            self.cursor = self.sqlite_connection.cursor()
-        self.cursor.execute(query, (name,))
-        result = self.cursor.fetchone()
-        return result is not None
+        with self.sqlite_connection as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, (name,))
+            return cursor.fetchone() is not None
 
     def check_for_existence(self, user_id):
         """Проверяет наличие пользователя в таблице users."""
 
         table_name = 'users'
         # Проверяем существование таблицы 'users'
-        if self.check_table_exists(table_name) is True:
-            query = f'SELECT 1 FROM {table_name} WHERE user_id = ?'
-            self.logger.info(f"Проверка существования пользователя {user_id} в таблице '{table_name}'.")
-            return self.fetchone(query, (user_id,)) is not None
-        else:
-            missing_tables = [table for table in self.tables.keys() if not self.check_table_exists(table)]
-            if missing_tables:
-                self.logger.info(f"Создаю отсутствующие таблицы: {', '.join(missing_tables)}")
-            for table in missing_tables:
-                self.create_table(table)
+        if not self.check_table_exists(table_name):
+            self.logger.info(f"Таблица '{table_name}' не найдена. Создаю таблицу и недостающие таблицы.")
+            for table in self.tables:
+                if not self.check_table_exists(table):
+                    self.create_table(table)
 
             for trigger_name, action in [
                 ('after_user_insert_to_setting_users',
@@ -129,44 +149,42 @@ class Work_with_DB:
                 ('after_user_insert_to_user_statistics',
                  'INSERT INTO user_statistics (user_id) VALUES (NEW.user_id);')
             ]:
-                self.execute_query(f"""
-                    CREATE TRIGGER IF NOT EXISTS {trigger_name}
-                    AFTER INSERT ON {table_name}
-                    BEGIN
-                        {action}
-                    END;
-                """)
-
-            self.sqlite_connection.commit()
+                create_trigger_query = (f'CREATE TRIGGER IF NOT EXISTS {trigger_name} '
+                                        f'AFTER INSERT ON {table_name}'
+                                        f'BEGIN {action}'
+                                        f'END;')
+                with self.sqlite_connection as conn:
+                    conn.execute(create_trigger_query)
             return False
+
+        # Проверяем наличие записи с переданным user_id
+        select_query = f'SELECT 1 FROM {table_name} WHERE user_id = ?'
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query, (user_id,))
+            return cursor.fetchone() is not None
 
     def insert_new_user(self, user_id, first_name, last_name, username):
         """Добавляет нового пользователя в таблицу users."""
 
+        self.create_table('users')  # Ensure 'users' table exists
+        self.tables['setting_users'] = ['"user_id" INTEGER REFERENCES users(user_id) ON DELETE CASCADE',
+                                        '"user_first_name" TEXT',
+                                        '"user_last_name" TEXT',
+                                        '"news" TEXT DEFAULT "False"',
+                                        '"baraholka" TEXT DEFAULT "False"',
+                                        '"rights" TEXT DEFAULT "user"',
+                                        '"use_bot" TEXT DEFAULT "True"']  # Adjust table definition
+        self.create_table('setting_users')  # Ensure 'setting_users' table exists
+
         if not self.check_for_existence(user_id):
-            query = ('INSERT INTO users (user_id, user_first_name, user_last_name, username, date_registration) '
-                     'VALUES (?, ?, ?, ?, ?)')
-            self.execute_query(query,
-                               (user_id, first_name, last_name, username, datetime.datetime.now().strftime("%d.%m.%Y")))
-            return True
+            insert_query = ('INSERT INTO users (user_id, user_first_name, user_last_name, username, date_registration) '
+                            'VALUES (?, ?, ?, ?, ?)')
+            with self.sqlite_connection as conn:
+                conn.execute(insert_query,
+                             (user_id, first_name, last_name, username,
+                              datetime.datetime.now().strftime("%d.%m.%Y")))
+                return True
         return False
-
-    def collect_statistical_user(self, user_id):
-        """Увеличивает статистику пользователя."""
-
-        query = ('UPDATE user_statistics '
-                 'SET today = today + 1, month = month + 1, all_time = all_time + 1 '
-                 'WHERE user_id = ?')
-        self.logger.info(f"Обновление статистики для пользователя {user_id}.")
-        self.execute_query(query, (user_id,))
-
-    def collect_statistical_func(self, name_func):
-        """Подсчитывает сколько раз была вызвана функция."""
-        query = ('INSERT INTO function_statistics (name, today, month, all_time) '
-                 'VALUES (?, 1, 1, 1) '
-                 'ON CONFLICT(name) DO UPDATE SET today = today + 1, month = month + 1, all_time = all_time + 1;')
-        self.logger.debug(f"Incrementing function call statistics for function '{name_func}'.")
-        self.execute_query(query, (name_func,))
 
     def insert_dej_in_table(self, first_date, last_date, name_hero):
         """Добавляет дежурного в таблицу duty_schedule."""
@@ -178,14 +196,13 @@ class Work_with_DB:
                 'INSERT INTO duty_schedule ("first_date", "last_date", "user_first_name") '
                 'VALUES (?, ?, ?)'
             )
-            self.cursor.execute(insert_query, (first_date, last_date, name_hero))
-
-            self.sqlite_connection.commit()
+            with self.sqlite_connection as conn:
+                conn.execute(insert_query, (first_date, last_date, name_hero))
             self.logger.info(f"Запись о дежурном добавлена: {first_date}, {last_date}, {name_hero}.")
             return True
         except sqlite3.IntegrityError as e:
             self.logger.error(f"Integrity error while inserting duty schedule: {e}")
-        text_error = ("Ошибка: начальная или конечная дата уже существует в таблице.")
+        text_error = "Ошибка: начальная или конечная дата уже существует в таблице."
         return text_error
 
     def get_data_next_dej(self):
@@ -198,10 +215,11 @@ class Work_with_DB:
                         f"WHERE first_date >= DATE('now') "
                         f"ORDER BY ABS(JULIANDAY(first_date) - JULIANDAY('now'))"
                         f"LIMIT 1")
-        self.cursor.execute(select_query)
-        # Проверяем, есть ли результат
-        result = self.cursor.fetchone()
-        # print(result)
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query)
+            # Проверяем, есть ли результат
+            result = cursor.fetchone()
+
         if result is not None:
             first_date = result[1]
             last_date = result[2]
@@ -221,12 +239,13 @@ class Work_with_DB:
                         f"WHERE first_date >= DATE('now') "
                         f"ORDER BY ABS(JULIANDAY(first_date) - JULIANDAY('now')) "
                         f"LIMIT 10")
-        self.cursor.execute(select_query)
-        result = self.cursor.fetchall()
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query)
+            result = cursor.fetchall()
+        self.logger.debug("Attempting to fetch the list of the next 10 duty records.")
         data_list = [[row[1], row[2], row[3]] for row in result]
 
-        # print(data_list)
-        self.logger.info(f"Получен список ближайших дежурств: {data_list}.")
+        self.logger.info(f"Получен список ближайших дежурств: {data_list}. Total records retrieved: {len(data_list)}")
         return data_list
 
     def check_access_level_user(self, user_id):
@@ -235,8 +254,10 @@ class Work_with_DB:
         table_name = 'setting_users'
         # Проверяем существование таблицы 'setting_users'
         if self.check_table_exists(table_name):
-            self.cursor.execute(f'SELECT rights FROM "{table_name}" WHERE user_id="{user_id}"')
-            result = self.cursor.fetchone()
+            select_query = f'SELECT rights FROM "{table_name}" WHERE user_id="{user_id}"'
+            with self.sqlite_connection as conn:
+                cursor = conn.execute(select_query)
+                result = cursor.fetchone()
             if result:
                 self.logger.info(f"Права доступа для пользователя {user_id} получены: {result[0]}.")
                 return result[0]
@@ -255,8 +276,9 @@ class Work_with_DB:
         elif focus_group == 'baraholka':
             select_query = 'SELECT user_id FROM setting_users WHERE baraholka="True" AND use_bot="True"'
 
-        self.cursor.execute(select_query)
-        result = self.cursor.fetchall()
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query)
+            result = cursor.fetchall()
 
         return [user_id[0] for user_id in result] if result else []
 
@@ -266,18 +288,17 @@ class Work_with_DB:
         update_query = (f'UPDATE setting_users '
                         f'SET "{column_name}" = "{set_status}" '
                         f'WHERE user_id = "{user_id}"')
-        self.cursor.execute(update_query)
-        self.sqlite_connection.commit()
+        with self.sqlite_connection as conn:
+            conn.execute(update_query)
 
     def change_user_status_news(self, user_id):
         """Изменяет статус пользователя user_id в setting_users.
         Устанавливает противоположный статус в колонке news"""
 
         select_query = f'SELECT news FROM setting_users WHERE user_id="{user_id}"'
-        if not hasattr(self, 'cursor') or self.cursor is None:
-            self.cursor = self.sqlite_connection.cursor()
-        self.cursor.execute(select_query)
-        status = self.cursor.fetchone()[0]
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query)
+            status = cursor.fetchone()[0]
 
         if status == 'True':
             self.change_user_settings(column_name='news', set_status='False', user_id=user_id)
@@ -294,8 +315,9 @@ class Work_with_DB:
         Устанавливает противоположный статус в колонке baraholka"""
 
         select_query = f'SELECT baraholka FROM setting_users WHERE user_id="{user_id}"'
-        self.cursor.execute(select_query)
-        status = self.cursor.fetchone()[0]
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query)
+            status = cursor.fetchone()[0]
 
         if status == 'True':
             self.change_user_settings(column_name='baraholka', set_status='False', user_id=user_id)
@@ -307,8 +329,9 @@ class Work_with_DB:
         Устанавливает противоположный статус в колонке use_bot"""
 
         select_query = f'SELECT use_bot FROM setting_users WHERE user_id="{user_id}"'
-        self.cursor.execute(select_query)
-        status = self.cursor.fetchone()[0]
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query)
+            status = cursor.fetchone()[0]
 
         if status == 'True':
             self.change_user_settings(column_name='use_bot', set_status='False', user_id=user_id)
@@ -320,8 +343,9 @@ class Work_with_DB:
         Устанавливает противоположный статус в колонке rights"""
 
         select_query = f'SELECT rights FROM setting_users WHERE user_id="{user_id}"'
-        self.cursor.execute(select_query)
-        status = self.cursor.fetchone()[0]
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query)
+            status = cursor.fetchone()[0]
 
         if status == 'user':
             self.change_user_settings(column_name='rights', set_status='admin', user_id=user_id)
@@ -333,12 +357,12 @@ class Work_with_DB:
         Устанавливает противоположный статус в колонке news"""
 
         select_query = f'SELECT "{column}" FROM setting_users WHERE user_id="{user_id}"'
-        self.cursor.execute(select_query)
-        status = self.cursor.fetchone()[0]
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query)
+            status = cursor.fetchone()[0]
 
         return status
 
-    # @error_handling
     def check_dej_tomorrow(self):
         """Достаёт ближайшую дату из таблицы duty_schedule, если эта дата завтра, возвращает текст события,
         иначе вернёт False"""
@@ -348,10 +372,10 @@ class Work_with_DB:
                         'WHERE first_date = DATE("now", "+1 day") '
                         'ORDER BY first_date '
                         'LIMIT 1;')
-        if not hasattr(self, 'cursor') or self.cursor is None:
-            self.cursor = self.sqlite_connection.cursor()
-        self.cursor.execute(select_query)
-        result = self.cursor.fetchone()
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query)
+            result = cursor.fetchone()
+
         if result:
             list_data = self.get_data_next_dej()
 
@@ -380,9 +404,9 @@ class Work_with_DB:
         select_query = ('SELECT * '
                         'FROM events '
                         'WHERE DATE(date) = DATE("now");')
-        self.cursor.execute(select_query)
-        result = self.cursor.fetchall()
-        # print(result)
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query)
+            result = cursor.fetchall()
 
         if len(result) > 0:
             self.logger.debug(f"Today's events: {result}")
@@ -397,8 +421,9 @@ class Work_with_DB:
 
         select_query = (f'SELECT last_checkpoint '
                         f'FROM {name_table}')
-        self.cursor.execute(select_query)
-        result = self.cursor.fetchone()
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query)
+            result = cursor.fetchone()
         if result is not None:
             return result
         else:
@@ -407,89 +432,145 @@ class Work_with_DB:
     def update_checkpoint(self, checkpoint):
         """Актуализирует данные о дверях в БД"""
 
-        try:
-            query = "UPDATE in_out SET last_checkpoint = ? WHERE id = 1"
-            self.cursor.execute(query, (checkpoint,))
-            if self.cursor.rowcount == 0:  # If no rows are updated
-                query = "INSERT INTO in_out (last_checkpoint) VALUES (?)"
-                self.cursor.execute(query, (checkpoint,))
-            self.sqlite_connection.commit()
-        except sqlite3.Error as e:
-            self.logger.error(f"Failed to update checkpoint: {e}")
-            self.sqlite_connection.rollback()
+        self.logger.debug(f"Attempting to update checkpoint: {checkpoint}")
+        update_query = f"UPDATE in_out SET last_checkpoint = '{checkpoint}' WHERE id = 1"
+        # print(update_query)
+        with self.sqlite_connection as conn:
+            conn.execute(update_query)
+        self.logger.info(f"Checkpoint successfully updated: {checkpoint}")
+
+        with self.sqlite_connection as conn:
+            cursor = conn.cursor()
+            if cursor.rowcount == 0:  # If no rows are updated
+                self.logger.debug("No existing checkpoint found. Inserting a new checkpoint.")
+                insert_query = "INSERT INTO in_out (last_checkpoint) VALUES (?)"
+                # with self.db_path as conn:
+                conn.execute(insert_query, (checkpoint,))
+        self.logger.info(f"Checkpoint successfully updated/inserted: {checkpoint}")
+
+
+# class ConnectionManager:
+#     """Класс для управления соединением с базой данных"""
+#
+#     def __init__(self):
+#         self.db = WorkWithDb()
+#
+#     def __enter__(self):
+#         """Метод, который выполняется при входе в контекстный менеджер.
+#         Устанавливает соединение с базой данных и открывает курсор.
+#
+#         Использование:
+#         with ConnectionManager() as db:
+#             # Работа с базой данных через объект db
+#         """
+#         self.db = WorkWithDb()
+#         self.db.__enter__()
+#         return self.db
+#
+#     def __exit__(self, exc_type: type, exc_val: BaseException, exc_tb: object) -> bool:
+#         """
+#         Метод вызывается при выходе из контекстного менеджера.
+#
+#         Если во время работы в контекстном менеджере возникает ошибка, то выполняется откат транзакции (rollback).
+#         В противном случае все изменения фиксируются (commit). В любом случае соединение с базой данных закрывается.
+#
+#         Использование:
+#         with ConnectionManager() as db:
+#             # Выполнение операций с объектом db
+#             # Например, вызов методов для работы с базой данных
+#
+#         Если в блоке `with` возникает исключение, коммит не будет выполнен, а изменения будут отменены.
+#         """
+#         self.db.__exit__(exc_type, exc_val, exc_tb)
+#         self.db.close_connection()
+#         self.db = None
+#         return True
+
+
+class StatisticsManager:
+    """Класс для работы со статистикой пользователей и функций"""
+
+    def __init__(self):
+        self.db = WorkWithDb()
+        self.sqlite_connection = self.db
+        self.logger = logging.getLogger('StatisticsManager')
 
     def get_top_func_stat(self, column):
-        """Достаёт топ-3 самых вызываемых функций за день"""
-
+        """Достаёт топ-3 самых вызываемых функций за column"""
+        self.logger.debug(f"Fetching top-3 functions for column: {column}")
         select_query = (f'SELECT name, {column} '
                         f'FROM function_statistics '
                         f'WHERE {column} > 0 '
                         f'ORDER BY {column} DESC '
                         f'LIMIT 3')
-        self.cursor.execute(select_query)
-        result = self.cursor.fetchall()
-        if result:
-            return result
+        with self.sqlite_connection as conn:
+            cursor = conn.cursor()
+            cursor.execute(select_query)
+            result = cursor.fetchall()
+            self.logger.debug(f"Query executed: {select_query}. Result: {result}")
+            return result or []
+
+    def get_top_func_stat_day(self):
+        """Достаёт топ-3 самых вызываемых функций за день"""
+        self.logger.info("Fetching top-3 functions for today.")
+        return self.get_top_func_stat('today')
+
+    def get_top_func_stat_month(self):
+        """Достаёт топ-3 самых вызываемых функций за месяц"""
+        self.logger.info("Fetching top-3 functions for the month.")
+        return self.get_top_func_stat('month')
+
+    def get_top_func_stat_all_time(self):
+        """Достаёт топ-3 самых вызываемых функций за все время"""
+        self.logger.info("Fetching top-3 functions for all time.")
+        return self.get_top_func_stat('all_time')
 
     def reset_func_stat(self, column):
-        """Обнуляет счетчики активности вызываемых функций в колонке column"""
+        """Обнуляет счетчики активности вызываемых функций в колонке column."""
+        self.logger.warning(f"Resetting function statistics for column: {column}")
+        update_query = f'UPDATE function_statistics SET {column} = 0'
+        with self.sqlite_connection as conn:  # Fixing the connection usage
+            cursor = conn.cursor()  # Creating a cursor for the connection
+            cursor.execute(update_query)
+            conn.commit()  # Ensuring the changes are committed
+        self.logger.debug(f"Statistics reset query executed: {update_query}")
 
-        update_query = (f'UPDATE function_statistics '
-                        f'SET {column} = 0')
-        self.cursor.execute(update_query)
-        self.sqlite_connection.commit()
-        self.logger.info(f"Сброшена статистика функций для столбца '{column}'.")
+    def reset_func_stat_day(self):
+        """Обнуляет счетчики активности вызываемых функций за день"""
+        self.logger.info("Resetting daily function statistics.")
+        self.reset_func_stat('today')
 
-    def execute_query(self, query, params=None):
+    def reset_func_stat_month(self):
+        """Обнуляет счетчики активности вызываемых функций за месяц"""
+        self.logger.info("Resetting monthly function statistics.")
+        self.reset_func_stat('month')
 
-        """Executes a given SQL query with optional parameters."""
-        try:
-            if not hasattr(self, 'sqlite_connection') or not self.sqlite_connection:
-                self.initialize_connection()
-            if not hasattr(self, 'cursor') or not self.cursor:
-                self.cursor = self.sqlite_connection.cursor()
+    def reset_func_stat_all_time(self):
+        """Обнуляет счетчики активности вызываемых функций за все время"""
+        self.logger.info("Resetting all-time function statistics.")
+        self.reset_func_stat('all_time')
 
-            if params:
-                self.cursor.execute(query, params)
-            else:
-                self.cursor.execute(query)
+    def collect_statistical_user(self, user_id):
+        """Увеличивает статистику пользователя."""
+        self.logger.info(f"Incrementing statistics for user_id: {user_id}")
+        update_query = ('UPDATE user_statistics '
+                        'SET today = today + 1, month = month + 1, all_time = all_time + 1 '
+                        'WHERE user_id = ?')
+        with self.sqlite_connection as conn:  # Using correct connection handling
+            cursor = conn.cursor()  # Creating a cursor for the connection
+            cursor.execute(update_query, (user_id,))
+            conn.commit()  # Ensuring the changes are committed
+            self.logger.debug(f"Statistics updated for user_id: {user_id}")
 
-            self.sqlite_connection.commit()
-            self.logger.debug(f"Query executed successfully: {query} with params: {params}")
-        except sqlite3.Error as e:
-            self.logger.error(f"Error occurred while executing query: {query} with params: {params}. Error: {e}")
-            self.sqlite_connection.rollback()
-            raise
-
-    def fetchone(self, query, param):
-        try:
-            if not self.cursor:
-                self.logger.error("Cannot fetch data as the cursor is not initialized.")
-                raise sqlite3.OperationalError("Cursor not initialized.")
-
-            self.cursor.execute(query, param)
-            result = self.cursor.fetchone()
-            self.logger.debug(f"Fetch one query executed. Query: {query}, Parameters: {param}")
-            return result
-        except sqlite3.Error as error:
-            self.logger.error(f"Failed to execute fetchone query. Error: {error}")
-            raise
-
-    def fetchall(self, query, param=None):
-        """Executes a SELECT query and fetches all rows of the result."""
-        try:
-            if not self.is_connected or not self.cursor:
-                self.initialize_connection()
-                self.cursor = self.sqlite_connection.cursor()
-
-            if param:
-                self.cursor.execute(query, param)
-            else:
-                self.cursor.execute(query)
-
-            result = self.cursor.fetchall()
-            self.logger.debug(f"Query executed successfully: {query} with param: {param}. Result: {result}")
-            return result
-        except sqlite3.Error as e:
-            self.logger.error(f"Error occurred while executing query: {query} with param: {param}. Error: {e}")
-            raise
+    def collect_statistical_func(self, name_func):
+        """Подсчитывает сколько раз была вызвана функция."""
+        self.logger.info(f"Incrementing function call count for: {name_func}")
+        insert_query = ('INSERT INTO function_statistics (name, today, month, all_time) '
+                        'VALUES (?, 1, 1, 1) '
+                        'ON CONFLICT(name) '
+                        'DO UPDATE SET today = today + 1, month = month + 1, all_time = all_time + 1;')
+        with self.sqlite_connection as conn:  # Using correct connection handling
+            cursor = conn.cursor()  # Creating a cursor for the connection
+            cursor.execute(insert_query, (name_func,))
+            conn.commit()  # Ensuring the changes are committed
+            self.logger.debug(f"Function statistics updated for: {name_func}")

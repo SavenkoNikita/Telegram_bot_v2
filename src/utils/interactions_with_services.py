@@ -1,18 +1,15 @@
-import json
-import os
 import logging
+import os
 
 import dotenv
 import requests
 from requests.auth import HTTPBasicAuth
 
-from src.utils.decorarors import error_handling
-
 dotenv.load_dotenv()
 dev_id = os.getenv('DEV_ID')
 
 
-class Exchange_with_ERP:
+class ExchangeWithErp:
     """Получение данных из 1С"""
 
     def __init__(self, params):
@@ -25,7 +22,7 @@ class Exchange_with_ERP:
         self.password = os.getenv("PASS_ERP")
         self.user_agent_val = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         self.params = params
-        self.response = None
+        self.response = self.get_request()
 
     def get_request(self):
         """Выполняет GET-запрос к системе 1С."""
@@ -39,6 +36,7 @@ class Exchange_with_ERP:
                 timeout=10
             )
             self.logger.info(f"Получен ответ со статусом: {request.status_code}")
+            # print(request)
             return request
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Ошибка GET-запроса: {str(e)}")
@@ -64,8 +62,8 @@ class Exchange_with_ERP:
         Если пользователь не уволен, функция вернёт число, во всех остальных случаях 1С вернёт ошибку"""
 
         self.logger.info("Processing get_count_days response from ERP")
-        json = self.response.json()
-        count_day = int(json.get(os.getenv("FUNC_NAME2"), 0))
+        json_data = self.response.json()
+        count_day = int(json_data.get(os.getenv("FUNC_NAME2"), 0))
         self.logger.info(f"Count of days calculated: {count_day}")
         return count_day
 
@@ -82,10 +80,11 @@ class Exchange_with_ERP:
     def in_out(self):
         """Обрабатывает вход и выход пользователя из системы ERP."""
         try:
-            data = self.response.json() if self.response and self.response.content else {}
+            data = self.response.json()
             self.logger.debug(f"Ответ JSON in_out: {data}")
             if self.response.status_code == 200:
-                return [f"{item['Время']} {item['Вход']}" for item in data.get('data', [])]
+                for key, value in data.items():
+                    return value
             return {'error_text': 'Некорректный ответ'}
         except Exception as e:
             self.logger.error(f"Ошибка обработки in_out: {str(e)}")

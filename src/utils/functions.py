@@ -12,10 +12,9 @@ from requests.auth import HTTPBasicAuth
 from telebot import types
 from telebot_calendar import Calendar, CallbackData
 
-from src.utils.decorarors import error_handling
-from src.utils.interactions_with_services import Exchange_with_ERP
+from src.utils.interactions_with_services import ExchangeWithErp
 from src.utils.logger_setup import setup_logger
-from src.utils.sql import Work_with_DB
+from src.utils.sql import WorkWithDb, StatisticsManager
 
 # Инициализация бота
 dotenv.load_dotenv()
@@ -47,7 +46,7 @@ def register(call):
     last_name = call.from_user.last_name
     username = call.from_user.username
 
-    db_instance = Work_with_DB()
+    db_instance = WorkWithDb()
     if not db_instance.check_for_existence(user_id):
         if db_instance.insert_new_user(user_id, first_name, last_name, username):
             list_rand_phrase = [
@@ -88,7 +87,7 @@ def unknown_user(message):
     Иначе возвращает True"""
 
     user_id = message.from_user.id
-    if Work_with_DB().check_for_existence(user_id) is False:
+    if WorkWithDb().check_for_existence(user_id) is False:
         # Инициализация клавиатуры
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton(text='Зарегистрироваться', callback_data='button_registration'))
@@ -113,8 +112,8 @@ def dej_name(call):
     :return str(name)"""
 
     user_id = call.from_user.id
-    if Work_with_DB().check_for_existence(user_id) is True:
-        list_next_dej = Work_with_DB().get_data_next_dej()
+    if WorkWithDb().check_for_existence(user_id) is True:
+        list_next_dej = WorkWithDb().get_data_next_dej()
         # print(list_next_dej)
         if list_next_dej is not None:
 
@@ -142,7 +141,7 @@ def list_dej(call):
         2. str_two)"""
 
     user_id = call.from_user.id
-    db_instance = Work_with_DB()
+    db_instance = WorkWithDb()
     if db_instance.check_for_existence(user_id):
         list_next_dej = db_instance.get_data_list_dej()
         if list_next_dej:
@@ -206,7 +205,7 @@ def finalize_event(chat_id, user_id):
     last_date = data['last_date']
     name_hero = data['name']
 
-    answer_db = Work_with_DB().insert_dej_in_table(first_date, last_date, name_hero)
+    answer_db = WorkWithDb().insert_dej_in_table(first_date, last_date, name_hero)
     if answer_db is True:
         bot.send_message(chat_id,
                          f"Добавлено новое событие:\n"
@@ -221,7 +220,7 @@ def finalize_event(chat_id, user_id):
 def change_status_news(call):
     """Меняет статус подписки на новости у пользователя"""
 
-    answer = Work_with_DB().change_user_status_news(call.from_user.id)
+    answer = WorkWithDb().change_user_status_news(call.from_user.id)
     return answer
 
 
@@ -231,7 +230,7 @@ def post_answer_of_event(dict_answer):
     key_auth = os.getenv("EVENT_HANDLING_KEY")
     value_auth = os.getenv("EVENT_HANDLING_VALUE")
     dict_answer[key_auth] = value_auth
-    answer_ERP = Exchange_with_ERP(dict_answer).answer_from_ERP()
+    answer_ERP = ExchangeWithErp(dict_answer).answer_from_ERP()
     logger.debug(f"ERP answer: {answer_ERP}")
     return answer_ERP
 
@@ -241,7 +240,7 @@ def notification_for(focus_group, text_message, silent=False):
 
     logger.info(
         f"Entering method: notification_for with focus_group: {focus_group}, text_message: {text_message}, silent: {silent}")
-    list_id_user = Work_with_DB().get_list_users_id(focus_group)
+    list_id_user = WorkWithDb().get_list_users_id(focus_group)
 
     for user_id in list_id_user:
         try:
@@ -250,7 +249,7 @@ def notification_for(focus_group, text_message, silent=False):
             # Проверяем текст ошибки
             if "bot was blocked by the user" in str(e):
                 logger.warning(f"User {user_id} has blocked the bot.")
-                Work_with_DB().change_user_status_use_bot(user_id)
+                WorkWithDb().change_user_status_use_bot(user_id)
             else:
                 logger.error(f"An unexpected error occurred: {e}")
     logger.info("Exiting method: notification_for")
@@ -325,7 +324,7 @@ def schedule_next_run():
 def notification_of_dej_tomorrow():
     """Если завтра есть дежурный, пришлёт уведомление всем подписчикам"""
 
-    check_dej = Work_with_DB().check_dej_tomorrow()
+    check_dej = WorkWithDb().check_dej_tomorrow()
     if check_dej is not None:
         notification_for_subscribers(check_dej)
 
@@ -339,9 +338,9 @@ def get_app_remit_employee(call):
         response.raise_for_status()
         bot.send_document(
             chat_id=call.from_user.id,
-            data=response.content,
-            filename="remit_employee.apk",
-            caption=None
+            document=response.content,
+            visible_file_name="remit_employee.apk",
+            caption="Файл remit_employee.apk успешно загружен."
         )
     except requests.RequestException as e:
         bot.send_message(chat_id=call.from_user.id, text=f"Ошибка загрузки файла: {str(e)}")
@@ -354,8 +353,8 @@ def update_data_door():
     name = os.getenv('BIRD_AUTH_KEY')
     value = os.getenv('BIRD_AUTH_VALUE')
 
-    status_sql = Work_with_DB().check_door()[0]
-    answer_erp = Exchange_with_ERP({name: value}).in_out()
+    status_sql = WorkWithDb().check_door()[0]
+    answer_erp = ExchangeWithErp({name: value}).in_out()
     # print(status_sql)
     # print(answer_erp)
 
@@ -368,16 +367,17 @@ def update_data_door():
     # Если ответ от ERP список
     elif isinstance(answer_erp, list):
         last_point = answer_erp[-1]
+        string_last_point = str(f'{last_point.get("Время")} {last_point.get("Вход")}')
         # print(status_sql)
         # print(type(status_sql))
         # print(last_point)
         # print(type(last_point))
-        if status_sql != last_point:
-            Work_with_DB().update_checkpoint(last_point)
-            notif_bird(last_point)
+        # print(string_last_point)
+        if status_sql != string_last_point:
+            WorkWithDb().update_checkpoint(string_last_point)
+            notif_bird(string_last_point)
 
 
-@error_handling
 def notif_bird(last_point):
     """Уведомляет о чекпоинте"""
 
@@ -394,23 +394,26 @@ def notif_bird(last_point):
     door = ' '.join(list_last_point[3:])
     text_notif = ''
 
+    # print(direction, door)
+
     if door in list_observ_doors:
         if direction == 'Вход':
             text_notif = 'Пользователь присоединился к чату'
         elif direction == 'Выход':
             text_notif = 'Пользователь покинул чат'
 
-    markup = types.InlineKeyboardMarkup()
+        # print(text_notif)
 
-    name_button = 'Ок'
-    callback_data = 'DELETE'
-    markup.add(types.InlineKeyboardButton(text=name_button, callback_data=callback_data))
+        markup = types.InlineKeyboardMarkup()
 
-    for user_id in list_users:
-        bot.send_message(chat_id=user_id, text=text_notif, reply_markup=markup)
+        name_button = 'Ок'
+        callback_data = 'DELETE'
+        markup.add(types.InlineKeyboardButton(text=name_button, callback_data=callback_data))
+
+        for user_id in list_users:
+            bot.send_message(chat_id=user_id, text=text_notif, reply_markup=markup)
 
 
-@error_handling
 def decline_word(number, word_forms):
     logger.debug(f"Declining word for number: {number}, word forms: {word_forms}")
     """
@@ -435,7 +438,6 @@ def decline_word(number, word_forms):
         return word_forms[2]
 
 
-@error_handling
 def find_value_by_name(data, target_name, target_key):
     # Если data является словарем
     if isinstance(data, dict):
@@ -462,7 +464,6 @@ def find_value_by_name(data, target_name, target_key):
     return None
 
 
-@error_handling
 def formation_of_the_function_rating_text(list_from_db):
     """Принимает лист с результатами из БД и составляет из него текст с рейтингом"""
 
@@ -482,26 +483,25 @@ def formation_of_the_function_rating_text(list_from_db):
     )
 
 
-@error_handling
 def create_top_chart_func():
     """Формирует рейтинг топ 3 самых вызываемых функций"""
 
     logger.info("Entering method: create_top_chart_func")
-    heading = '••• ТОП ЧАРТ ФУНКЦИЙ •••\n\n'
+    heading = '••• ТОП ЧАРТ ФУНКЦИЙ •••'
 
-    list_db_today = Work_with_DB().get_top_func_stat('today')
+    list_db_today = StatisticsManager().get_top_func_stat_day()
     text_top_chart_day = formation_of_the_function_rating_text(list_db_today)
-    title_day = f'• топ 3 за день •\nНет данных для формирования рейтинга\n\n'
+    title_day = f'• топ 3 за день •\nНет данных для формирования рейтинга'
     if text_top_chart_day:
-        title_day = f'• топ 3 за день •\n{text_top_chart_day}\n\n'
+        title_day = f'• топ 3 за день •\n{text_top_chart_day}'
 
-    list_db_month = Work_with_DB().get_top_func_stat('month')
+    list_db_month = StatisticsManager().get_top_func_stat_month()
     text_top_chart_month = formation_of_the_function_rating_text(list_db_month)
-    title_month = f'• топ 3 за месяц •\nНет данных для формирования рейтинга\n\n'
+    title_month = f'• топ 3 за месяц •\nНет данных для формирования рейтинга'
     if text_top_chart_month:
-        title_month = f'• топ 3 за месяц •\n{text_top_chart_month}\n\n'
+        title_month = f'• топ 3 за месяц •\n{text_top_chart_month}'
 
-    list_db_all_time = Work_with_DB().get_top_func_stat('all_time')
+    list_db_all_time = StatisticsManager().get_top_func_stat_all_time()
     text_top_chart_all_time = formation_of_the_function_rating_text(list_db_all_time)
     title_all_time = f'• топ 3 за всё время •\nНет данных для формирования рейтинга'
     if text_top_chart_all_time:

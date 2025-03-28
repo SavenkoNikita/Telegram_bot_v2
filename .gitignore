@@ -1,6 +1,9 @@
-telegram_bot.db
-/tests
-*.log
 *.pyc
 __pycache__/
+*.log
+*.db
 .env
+.vscode/
+.idea/
+.DS_Store
+/tests

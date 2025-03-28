@@ -5,6 +5,8 @@ from src.utils import functions
 from src.utils.functions import change_status_news
 
 
+logger = logging.getLogger(__name__)
+
 def building_func(call):
     """Временная заглушка для функций, которые еще не реализованы."""
     name_user = call.from_user.first_name
@@ -67,7 +69,7 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "access_level": "admin",
                 "callback": "button_urgent_message"},
             "button8": {
-                "name": "<<< Назад",
+                "name": "<<< Главное меню",
                 "access_level": "all",
                 "callback": "main_menu"}
         }
@@ -96,7 +98,7 @@ menu_storage = {  # Хранилище меню, подменю и функци�
             #     "access_level": "all",
             #     "callback": "button_unsub_bar"},
             "button7": {
-                "name": "<<< Назад",
+                "name": "<<< Главное меню",
                 "access_level": "all",
                 "callback": "main_menu"},
         }
@@ -129,7 +131,7 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "access_level": "admin",
                 "callback": "button_user"},
             "button7": {
-                "name": "<<< Назад",
+                "name": "<<< Главное меню",
                 "access_level": "all",
                 "callback": "main_menu"},
         }
@@ -155,9 +157,14 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "access_level": "all",
                 "callback": "button_dej_2"},
             "button3": {
-                "name": "<<< Назад",
+                "name": "<< Основные функции",
                 "access_level": "all",
                 "callback": "button_main_functions"},
+            "button4": {
+                "name": "<<< Главное меню",
+                "access_level": "all",
+                "callback": "main_menu"
+            }
         }
     },
     "button_dej_1": {"function": functions.dej_name},
@@ -168,7 +175,6 @@ menu_storage = {  # Хранилище меню, подменю и функци�
     "button_admin": {"function": building_func},
     "button_user": {"function": building_func},
     "button_subscribe": {"function": change_status_news},
-    # "button_unsubscribe": {"function": building_func},
     "button_defrosters": {"function": building_func},
     "button_all_sensor": {"function": building_func},
     # "button_log_out": {"function": building_func},

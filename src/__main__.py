@@ -15,11 +15,10 @@ from telebot import types
 from telebot_calendar import Calendar, CallbackData
 
 import src.utils.menu_formation as menu_form
-from src.utils.decorarors import registration_of_keystrokes
 from src.utils.functions import unknown_user, user_data, show_calendar, ask_for_name, finalize_event, \
     post_answer_of_event, schedule_next_run, update_data_door, create_top_chart_func
 from src.utils.logger_setup import setup_logger
-from src.utils.sql import Work_with_DB
+from src.utils.sql import WorkWithDb, StatisticsManager
 
 dotenv.load_dotenv()
 bot_token = os.getenv('BOT_TOKEN')
@@ -88,7 +87,7 @@ def send_welcome(message):
     answer = unknown_user(message)
 
     if answer is True:
-        user_access_level = Work_with_DB().check_access_level_user(user_id=user_id)
+        user_access_level = WorkWithDb().check_access_level_user(user_id=user_id)
         markup = menu_form.create_markup("main_menu", user_access_level)
         if markup:
             bot.send_message(user_id, menu_form.menu_storage["main_menu"]["text"], reply_markup=markup)
@@ -106,7 +105,7 @@ def talk(message):
 
 # Обработчик callback-запросов
 @bot.callback_query_handler(func=lambda call: True)
-@registration_of_keystrokes
+# @registration_of_keystrokes
 def callback_inline(call):
     """Обработчик Inline-запросов"""
 
@@ -121,7 +120,7 @@ def callback_inline(call):
         return
 
     # Счётчик активности пользователя
-    Work_with_DB().collect_statistical_user(user_id=user_id)
+    StatisticsManager().collect_statistical_user(user_id=user_id)
 
     # КАЛЕНДАРЬ
     if call.data.startswith(calendar_callback.prefix):
@@ -182,10 +181,13 @@ def callback_inline(call):
         name_entered_button = ''
 
         dict_button = call.message.json.get('reply_markup', {}).get('inline_keyboard', [])
+        # print(dict_button)
         for list_buttons in dict_button:
+            # print(list_buttons)
             for buttons in list_buttons:
-                name_button = buttons[0].get('text')
-                callback = buttons[0].get('callback_data')
+                # print(buttons)
+                name_button = buttons.get('text')
+                callback = buttons.get('callback_data')
                 if entered_type in callback:
                     logger.debug(f"Entered type ({entered_type}) matched in callback ({callback})")
                     name_entered_button = name_button
@@ -230,10 +232,10 @@ def callback_inline(call):
         else:
             bot.send_message(user_id, result)
         # Счётчик выполнения функций для сбора статистики
-        Work_with_DB().collect_statistical_func(name_func=menu_key)
+        StatisticsManager().collect_statistical_func(name_func=menu_key)
     # Если это переход на другое меню
     elif "redirect" in menu:
-        user_access_level = Work_with_DB().check_access_level_user(user_id=user_id)
+        user_access_level = WorkWithDb().check_access_level_user(user_id=user_id)
         new_menu_key = menu["redirect"]
         markup = menu_form.create_markup(new_menu_key, user_access_level)
         if markup:
@@ -245,7 +247,7 @@ def callback_inline(call):
             )
     # Если это обычное меню
     elif "buttons" in menu:
-        user_access_level = Work_with_DB().check_access_level_user(user_id=user_id)
+        user_access_level = WorkWithDb().check_access_level_user(user_id=user_id)
         markup = menu_form.create_markup(menu_key, user_access_level)
         if markup:
             bot.edit_message_text(
@@ -256,9 +258,9 @@ def callback_inline(call):
             )
 
 
-def job_every_month():
+def job_every_month(func):
     if datetime.datetime.today().day != 1:
-        Work_with_DB().reset_func_stat('month')
+        func()
         return
 
 
@@ -267,8 +269,8 @@ schedule_next_run()
 
 schedule.every().day.at('00:00').do(schedule_next_run)
 schedule.every().day.at('00:00').do(create_top_chart_func)
-schedule.every().day.at('00:00').do(Work_with_DB().reset_func_stat, 'today')
-schedule.every().day.at('00:00').do(job_every_month)
+schedule.every().day.at('00:00').do(StatisticsManager().reset_func_stat_day)
+schedule.every().day.at('00:00').do(job_every_month, StatisticsManager().reset_func_stat_month)
 
 schedule.every().minute.do(update_data_door)
 
