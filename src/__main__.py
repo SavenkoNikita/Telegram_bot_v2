@@ -92,9 +92,9 @@ def send_welcome(message):
         if markup:
             bot.send_message(user_id, menu_form.menu_storage["main_menu"]["text"], reply_markup=markup)
             logger.info(f"Главное меню открыто для пользователя: {user_id}")
-    else:
-        bot.send_message(user_id, text=answer[0], reply_markup=answer[1])
-        logger.warning(f"Доступ к меню ограничен для пользователя: {user_id}")
+    # else:
+    #     bot.send_message(user_id, text=answer[0], reply_markup=answer[1])
+    #     logger.warning(f"Доступ к меню ограничен для пользователя: {user_id}")
 
 
 @bot.message_handler(content_types=['text'])
@@ -105,7 +105,6 @@ def talk(message):
 
 # Обработчик callback-запросов
 @bot.callback_query_handler(func=lambda call: True)
-# @registration_of_keystrokes
 def callback_inline(call):
     """Обработчик Inline-запросов"""
 
@@ -122,6 +121,38 @@ def callback_inline(call):
     # Счётчик активности пользователя
     StatisticsManager().collect_statistical_user(user_id=user_id)
 
+    # # КАЛЕНДАРЬ
+    # if call.data.startswith(calendar_callback.prefix):
+    #     name, action, year, month, day = call.data.split(calendar_callback.sep)
+    #     date = calendar.calendar_query_handler(bot, call, name, action, year, month, day)
+    #
+    #     if action == "DAY":
+    #         date = date.date()
+    #         user_id = call.from_user.id
+    #         if user_id not in user_data:
+    #             user_data[user_id] = {}
+    #
+    #         if "first_date" not in user_data[user_id]:
+    #             if date < datetime.datetime.now().date():
+    #                 bot.send_message(call.message.chat.id,
+    #                                  "Вы выбрали прошедшую дату. Пожалуйста, выберите дату снова.")
+    #                 return
+    #             user_data[user_id]["first_date"] = date
+    #             show_calendar(chat_id=call.message.chat.id, title="Дежурство до какой даты (включительно)?")
+    #         else:
+    #             if date < user_data[user_id]["first_date"]:
+    #                 bot.send_message(call.message.chat.id,
+    #                                  "Конечная дата должна быть позже начальной. Пожалуйста, выберите дату снова.")
+    #                 return
+    #             user_data[user_id]["last_date"] = date
+    #             ask_for_name(call.message.chat.id)
+    #
+    #     elif action == "CANCEL":
+    #         user_id = call.from_user.id
+    #         bot.send_message(call.message.chat.id, "Операция отменена.")
+    #         if user_id in user_data:
+    #             del user_data[user_id]
+
     # КАЛЕНДАРЬ
     if call.data.startswith(calendar_callback.prefix):
         name, action, year, month, day = call.data.split(calendar_callback.sep)
@@ -131,22 +162,40 @@ def callback_inline(call):
             date = date.date()
             user_id = call.from_user.id
             if user_id not in user_data:
-                user_data[user_id] = {}
+                user_data[user_id] = {'calendar_mode': 'range'}  # По умолчанию режим диапазона
 
-            if "first_date" not in user_data[user_id]:
+            # Получаем текущий режим работы календаря (если был установлен)
+            calendar_mode = user_data[user_id].get('calendar_mode', 'range')
+
+            if calendar_mode == 'range':
+                # Обработка выбора диапазона дат (старая логика)
                 if date < datetime.datetime.now().date():
                     bot.send_message(call.message.chat.id,
                                      "Вы выбрали прошедшую дату. Пожалуйста, выберите дату снова.")
                     return
-                user_data[user_id]["first_date"] = date
-                show_calendar(chat_id=call.message.chat.id, title="Дежурство до какой даты (включительно)?")
+
+                if "first_date" not in user_data[user_id]:
+                    user_data[user_id]["first_date"] = date
+                    show_calendar(chat_id=call.message.chat.id,
+                                  title="Дежурство до какой даты (включительно)?",
+                                  select_range=True)
+                else:
+                    if date < user_data[user_id]["first_date"]:
+                        bot.send_message(call.message.chat.id,
+                                         "Конечная дата должна быть позже начальной. Пожалуйста, выберите дату снова.")
+                        return
+                    user_data[user_id]["last_date"] = date
+                    ask_for_name(call.message.chat.id)
             else:
-                if date < user_data[user_id]["first_date"]:
-                    bot.send_message(call.message.chat.id,
-                                     "Конечная дата должна быть позже начальной. Пожалуйста, выберите дату снова.")
-                    return
-                user_data[user_id]["last_date"] = date
-                ask_for_name(call.message.chat.id)
+                # Обработка выбора одной даты (новая логика)
+                user_data[user_id]["selected_date"] = date
+                # Здесь можно вызвать функцию-обработчик для одиночной даты
+                if 'date_handler' in user_data[user_id]:
+                    user_data[user_id]['date_handler'](call.message.chat.id, date)
+                else:
+                    bot.send_message(call.message.chat.id, f"Выбрана дата: {date.strftime('%d.%m.%Y')}")
+                # Очищаем данные после использования
+                del user_data[user_id]
 
         elif action == "CANCEL":
             user_id = call.from_user.id
@@ -170,7 +219,7 @@ def callback_inline(call):
     elif call.data == "DELETE":
         user_id = call.from_user.id
         bot.delete_message(call.message.chat.id, call.message.message_id)
-    elif call.data.startswith("event_"):
+    elif call.data.startswith("event_"):  # События простоя
         user_id = call.from_user.id
         data = call.data.split('_')
         event_id = data[1]  # Извлекаем идентификатор события
@@ -259,7 +308,9 @@ def callback_inline(call):
 
 
 def job_every_month(func):
-    if datetime.datetime.today().day != 1:
+    """Выполняет функцию если сегодня 1-е число месяца"""
+
+    if datetime.datetime.today().day == 1:
         func()
         return
 
@@ -272,7 +323,8 @@ schedule.every().day.at('00:00').do(create_top_chart_func)
 schedule.every().day.at('00:00').do(StatisticsManager().reset_func_stat_day)
 schedule.every().day.at('00:00').do(job_every_month, StatisticsManager().reset_func_stat_month)
 
-schedule.every().minute.do(update_data_door)
+# schedule.every().minute.do(update_data_door)
+schedule.every(10).seconds.do(update_data_door)
 
 
 def run_scheduler():

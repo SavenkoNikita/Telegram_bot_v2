@@ -545,10 +545,10 @@ class StatisticsManager:
         self.logger.info("Resetting monthly function statistics.")
         self.reset_func_stat('month')
 
-    def reset_func_stat_all_time(self):
-        """Обнуляет счетчики активности вызываемых функций за все время"""
-        self.logger.info("Resetting all-time function statistics.")
-        self.reset_func_stat('all_time')
+    # def reset_func_stat_all_time(self):
+    #     """Обнуляет счетчики активности вызываемых функций за все время"""
+    #     self.logger.info("Resetting all-time function statistics.")
+    #     self.reset_func_stat('all_time')
 
     def collect_statistical_user(self, user_id):
         """Увеличивает статистику пользователя."""

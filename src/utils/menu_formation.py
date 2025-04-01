@@ -17,14 +17,14 @@ def building_func(call):
 
 menu_storage = {  # Хранилище меню, подменю и функций.
     "main_menu": {
-        "text": "Главное меню:",
+        "text": "🏠 Главное меню:",
         "buttons": {
             "button1": {
-                "name": "Основные функции",
+                "name": "⚙️ Основные функции",
                 "access_level": "all",
                 "callback": "button_main_functions"},
             "button2": {
-                "name": "Управление подписками",
+                "name": "🔔 Управление подписками",
                 "access_level": "all",
                 "callback": "button_managing_subscriptions"},
             # "button3": {
@@ -32,22 +32,26 @@ menu_storage = {  # Хранилище меню, подменю и функци�
             #     "access_level": "admin",
             #     "callback": "button_account_management"},
             "button4": {
-                "name": "Дополнительные функции",
+                "name": "✨ Дополнительные функции",
                 "access_level": "all",
                 "callback": "button_additional_functions"},
         }
     },
     "button_main_functions": {
-        "text": "Основные функции:",
+        "text": "⚙️ Основные функции:",
         "buttons": {
-            "button1": {
-                "name": "Узнать кто дежурный",
+            "button": {
+                "name": "Дежурства в IT",
                 "access_level": "all",
-                "callback": "button_dej"},
-            "button2": {
-                "name": "Внести дежурство в календарь",
-                "access_level": "admin",
-                "callback": "button_ins_dej"},
+                "callback": "button_menu_dej"},
+            # "button1": {
+            #     "name": "Узнать кто дежурный",
+            #     "access_level": "all",
+            #     "callback": "button_dej"},
+            # "button2": {
+            #     "name": "📆 Внести дежурство в календарь",
+            #     "access_level": "admin",
+            #     "callback": "button_ins_dej"},
             "button3": {
                 "name": "Инвентаризация",
                 "access_level": "admin",
@@ -57,7 +61,7 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "access_level": "admin",
                 "callback": "button_create_notif"},
             "button5": {
-                "name": "Остаток дней отпуска",
+                "name": "📅 Остаток дней отпуска",
                 "access_level": "all",
                 "callback": "button_vacation"},
             "button6": {
@@ -65,17 +69,17 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "access_level": "admin",
                 "callback": "button_create_lot"},
             "button7": {
-                "name": "Мгновенное уведомление",
+                "name": "⚡ Мгновенное уведомление",
                 "access_level": "admin",
                 "callback": "button_urgent_message"},
             "button8": {
-                "name": "<<< Главное меню",
+                "name": "🏠 Главное меню",
                 "access_level": "all",
                 "callback": "main_menu"}
         }
     },
     "button_managing_subscriptions": {
-        "text": "Управление подписками:",
+        "text": "🔔 Управление подписками:",
         "buttons": {
             "button1": {
                 "name": "Новости IT-отдела",
@@ -98,40 +102,36 @@ menu_storage = {  # Хранилище меню, подменю и функци�
             #     "access_level": "all",
             #     "callback": "button_unsub_bar"},
             "button7": {
-                "name": "<<< Главное меню",
+                "name": "🏠 Главное меню",
                 "access_level": "all",
                 "callback": "main_menu"},
         }
     },
     "button_additional_functions": {
-        "text": "Дополнительные функции:",
+        "text": "✨ Дополнительные функции:",
         "buttons": {
             "button1": {
-                "name": "Написать разработчику",
+                "name": "✉️ Написать разработчику",
                 "access_level": "all",
                 "url": "t.me/nikita_it_remit"},
             "button2": {
-                "name": "Приложение 'Ремит сотрудник'",
+                "name": "📲 Приложение 'Ремит сотрудник'",
                 "access_level": "all",
                 "callback": "button_get_app_android"},
-            # "button3": {
-            #     "name": "Получить случайное имя",
-            #     "access_level": "admin",
-            #     "callback": "button_random"},
-            "button4": {
+            "button3": {
                 "name": "Получить список всех пользователей",
                 "access_level": "admin",
                 "callback": "button_all_users"},
-            "button5": {
+            "button4": {
                 "name": "Дать пользователю права админа",
                 "access_level": "admin",
                 "callback": "button_admin"},
-            "button6": {
+            "button5": {
                 "name": "Лишить пользователя прав админа",
                 "access_level": "admin",
                 "callback": "button_user"},
-            "button7": {
-                "name": "<<< Главное меню",
+            "button6": {
+                "name": "🏠 Главное меню",
                 "access_level": "all",
                 "callback": "main_menu"},
         }
@@ -142,9 +142,38 @@ menu_storage = {  # Хранилище меню, подменю и функци�
         "access_level": "all",
         "callback": "main_menu"},
 
-    "button_registration": {"function": functions.register},
+    "button_registration": {
+        "function": functions.register,
+        "name": "Зарегистрироваться",
+        "callback": "button_registration"
+    },
 
     ### Дежурный ###
+    "button_menu_dej": {
+        "text": "Дежурства в IT:",
+        "buttons": {
+            "button1": {
+                "name": "Узнать кто дежурный",
+                "access_level": "all",
+                "callback": "button_dej"},
+            "button2": {
+                "name": "📆 Внести дежурство в календарь",
+                "access_level": "admin",
+                "callback": "button_ins_dej"},
+            "button3": {
+                "name": "Внести изменения",
+                "access_level": "admin",
+                "callback": "button_upd_dej"},
+            "button4": {
+                "name": "🔙 Основные функции",
+                "access_level": "all",
+                "callback": "button_main_functions"},
+            "button5": {
+                "name": "🏠 Главное меню",
+                "access_level": "all",
+                "callback": "main_menu"}
+        }
+    },
     "button_dej": {
         "text": "Узнать кто дежурный:",
         "buttons": {
@@ -157,16 +186,42 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "access_level": "all",
                 "callback": "button_dej_2"},
             "button3": {
-                "name": "<< Основные функции",
+                "name": "🔙 Дежурства в IT",
                 "access_level": "all",
-                "callback": "button_main_functions"},
+                "callback": "button_menu_dej"},
             "button4": {
-                "name": "<<< Главное меню",
+                "name": "🏠 Главное меню",
                 "access_level": "all",
-                "callback": "main_menu"
-            }
+                "callback": "main_menu"}
         }
     },
+
+    "button_create_notif": {
+        "text": "Создать уведомление",
+        "buttons": {
+            "button1": {
+                "name": "Для всех",
+                "access_level": "admin",
+                "callback": "button_notif_all"},
+            "button2": {
+                "name": "Для подписчиков IT-отдела",
+                "access_level": "admin",
+                "callback": "button_notif_it"},
+            "button3": {
+                "name": "Для барахолки",
+                "access_level": "admin",
+                "callback": "button_notif_bar"},
+            "button4": {
+                "name": "🔙 Основные функции",
+                "access_level": "all",
+                "callback": "button_main_functions"},
+            "button5": {
+                "name": "🏠 Главное меню",
+                "access_level": "all",
+                "callback": "main_menu"}
+        }
+    },
+
     "button_dej_1": {"function": functions.dej_name},
     "button_dej_2": {"function": functions.list_dej},
     "button_ins_dej": {"function": functions.fill_schedule_dej},
@@ -183,13 +238,126 @@ menu_storage = {  # Хранилище меню, подменю и функци�
     "button_get_app_android": {"function": functions.get_app_remit_employee},
     # "button_random": {"function": building_func},
     "button_all_users": {"function": building_func},
-    "button_create_notif": {"function": building_func},
     "button_vacation": {"function": building_func},
     "button_create_lot": {"function": building_func},
     "button_urgent_message": {"function": building_func},
     "button_sub_bar": {"function": building_func},
-    # "button_unsub_bar": {"function": building_func},
+    "button_notif_all": {"function": building_func},
+    "button_notif_it": {"function": building_func},
+    "button_notif_bar": {"function": building_func},
+    "button_upd_dej": {"function": building_func}
 }
+
+new_menu_storage = {
+"main_menu": {
+    "title": "🏠 Главное меню:",
+    "access_level": "all",
+    "buttons": {
+        "button_main_functions": {
+            "title": "⚙️ Основные функции",
+            "access_level": "all",
+            "buttons": {
+                "button_menu_dej": {
+                    "title": "Дежурства в IT",
+                    "access_level": "all",
+                    "buttons": {
+                        "button_dej": {
+                            "title": "Узнать кто дежурный",
+                            "access_level": "all",
+                            "buttons": {
+                                "button_dej_1": {
+                                    "title": "Имя следующего дежурного",
+                                    "access_level": "all",
+                                    "function": functions.dej_name},
+                                "button_dej_2": {
+                                    "title": "Список дежурных",
+                                    "access_level": "all",
+                                    "function": functions.list_dej}
+                            }
+                        },
+                        "button_ins_dej": {
+                            "title": "📆 Внести дежурство в календарь",
+                            "access_level": "admin",
+                            "function": functions.fill_schedule_dej},
+                        "button_upd_dej": {
+                            "title": "Внести изменения",
+                            "access_level": "admin",
+                            "function": building_func}
+                    }
+                },
+                "button_invent": {
+                    "title": "Инвентаризация",
+                    "access_level": "admin",
+                    "function": building_func},
+                "button_create_notif": {
+                    "title": "Создать уведомление",
+                    "access_level": "admin",
+                    "function": building_func},
+                "button_vacation": {
+                    "title": "📅 Остаток дней отпуска",
+                    "access_level": "all",
+                    "function": building_func},
+                "button_create_lot": {
+                    "title": "Создать лот",
+                    "access_level": "admin",
+                    "function": building_func},
+                "button_urgent_message": {
+                    "title": "⚡ Мгновенное уведомление",
+                    "access_level": "admin",
+                    "function": building_func}
+            }
+        },
+        "button_managing_subscriptions": {
+            "title": "🔔 Управление подписками",
+            "access_level": "all",
+            "buttons": {
+                "button_subscribe": {
+                    "title": "Новости IT-отдела",
+                    "access_level": "all",
+                    "function": change_status_news},
+                "button_defrosters": {
+                    "title": "Мониторинг дефростеров",
+                    "access_level": "admin",
+                    "function": building_func},
+                "button_all_sensor": {
+                    "title": "Мониторинг неисправных датчиков",
+                    "access_level": "admin",
+                    "function": building_func},
+                "button_sub_bar": {
+                    "title": "Барахолка",
+                    "access_level": "all",
+                    "function": building_func}
+            }
+        },
+        "button_additional_functions": {
+            "title": "✨ Дополнительные функции",
+            "access_level": "all",
+            "buttons": {
+                "button_send_dev": {
+                    "name": "✉️ Написать разработчику",
+                    "access_level": "all",
+                    "url": "t.me/nikita_it_remit"},
+                "button_get_app_android": {
+                    "name": "📲 Приложение 'Ремит сотрудник'",
+                    "access_level": "all",
+                    "function": functions.get_app_remit_employee},
+                "button_all_users": {
+                    "name": "Получить список всех пользователей",
+                    "access_level": "admin",
+                    "function": building_func},
+                "button_rights": {
+                    "name": "Изменить права пользователя",
+                    "access_level": "admin",
+                    "buttons": {
+                        "button_admin": {
+                            "name": "Дать пользователю права админа",
+                            "access_level": "admin",
+                            "function": building_func},
+                        "button_user": {
+                            "name": "Лишить пользователя прав админа",
+                            "access_level": "admin",
+                            "function": building_func}
+                    }}}}}}}
 
 
 # Функция для создания клавиатуры на основе данных из хранилища

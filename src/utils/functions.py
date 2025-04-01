@@ -158,29 +158,52 @@ def list_dej(call):
 def fill_schedule_dej(call):
     """Заполняет шапку календаря, формирует клавиатуру и возвращает результат"""
 
-    text = 'Выберите дату начала дежурства:'
-    calendar_data = show_calendar(chat_id=None, title=text)
-    return calendar_data
+    text_title = 'Выберите дату начала дежурства:'
+    created_calendar = show_calendar(chat_id=None, title=text_title, select_range=True)
+    return created_calendar
 
 
-def show_calendar(chat_id=None, title=None):
-    """Если в chat_id None - возвращает текст и клавиатуру в виде dict. Иначе отправляет пользователю календарь."""
+# def show_calendar(chat_id=None, title=None):
+#     """Если в chat_id None - возвращает текст и клавиатуру в виде dict. Иначе отправляет пользователю календарь."""
+#
+#     now = datetime.now()
+#
+#     if chat_id is None:
+#         keyboard = calendar.create_calendar(name=calendar_callback.prefix, year=now.year, month=now.month)
+#         result = {
+#             'text': title,
+#             'keyboard': keyboard
+#         }
+#
+#         return result
+#     else:
+#         bot.send_message(chat_id, title, reply_markup=calendar.create_calendar(name=calendar_callback.prefix,
+#                                                                                year=now.year,
+#                                                                                month=now.month))
 
+def show_calendar(chat_id=None, title=None, select_range=False):
+    """Универсальная функция для отображения календаря.
+    Если select_range=True - будет ожидаться выбор диапазона дат."""
     now = datetime.now()
 
     if chat_id is None:
         keyboard = calendar.create_calendar(name=calendar_callback.prefix, year=now.year, month=now.month)
         result = {
             'text': title,
-            'keyboard': keyboard
+            'keyboard': keyboard,
+            'select_range': select_range  # Добавляем флаг в возвращаемый словарь
         }
-
         return result
     else:
-        bot.send_message(chat_id, title, reply_markup=calendar.create_calendar(name=calendar_callback.prefix,
-                                                                               year=now.year,
-                                                                               month=now.month))
-
+        bot.send_message(
+            chat_id,
+            title,
+            reply_markup=calendar.create_calendar(
+                name=calendar_callback.prefix,
+                year=now.year,
+                month=now.month
+            )
+        )
 
 def ask_for_name(chat_id):
     """Отправляет пользователю сообщение с inline клавиатурой для выбора имени вносимого в таблицу в БД дежурного."""
@@ -190,7 +213,7 @@ def ask_for_name(chat_id):
     markup.add(types.InlineKeyboardButton("Дмитрий", callback_data="name_Дмитрий"))
     markup.add(types.InlineKeyboardButton("Никита", callback_data="name_Никита"))
     markup.add(types.InlineKeyboardButton("Алексей", callback_data="name_Алексей"))
-    markup.add(types.InlineKeyboardButton("Отмена", callback_data="CANCEL"))
+    markup.add(types.InlineKeyboardButton("❌ Отмена", callback_data="CANCEL"))
     bot.send_message(chat_id, "Кто будет дежурить в указанный период?", reply_markup=markup)
 
 
@@ -216,6 +239,12 @@ def finalize_event(chat_id, user_id):
     else:
         bot.send_message(chat_id, answer_db)
 
+def create_event(call):
+    """Заполняет шапку календаря, формирует клавиатуру и возвращает результат"""
+
+    text_title = 'Выберите дату события:'
+    created_calendar = show_calendar(chat_id=None, title=text_title)
+    return created_calendar
 
 def change_status_news(call):
     """Меняет статус подписки на новости у пользователя"""
@@ -261,9 +290,11 @@ def notification_for_all_user(text_message):
     notification_for(focus_group='all', text_message=text_message)
 
 
-def notification_for_subscribers(text_message):
+def notification_for_subscribers(text_notif):
     """Рассылает уведомление подписчикам на новости IT отдела"""
 
+    title = f"••• Новости IT-отдела •••"
+    text_message = f"{title}\n\n{text_notif}"
     notification_for(focus_group='news', text_message=text_message)
 
 
@@ -280,8 +311,8 @@ def schedule_next_run():
         hour = '{:02d}'.format(random.randint(00, 23))
 
         if summary == 'first summary':
-            """Формирует время <07:random(0:59)>"""
-            hour = '07'
+            """Формирует время <06:random(0:59)>"""
+            hour = '06'
         elif summary == 'second summary':
             """Формирует время <08:random(0:59)>"""
             hour = '08'
@@ -301,7 +332,7 @@ def schedule_next_run():
     logger.info(f'{datetime.now().strftime("%d.%m.%Y %H:%M:%S")} Updating task schedules:')
 
     list_func = [
-        # {'first summary': []},
+        {'first summary': [notif_of_hero]},
         # {'second summary': []},
         {'daily summary': [notification_of_dej_tomorrow]}
     ]
@@ -415,7 +446,6 @@ def notif_bird(last_point):
 
 
 def decline_word(number, word_forms):
-    logger.debug(f"Declining word for number: {number}, word forms: {word_forms}")
     """
     Функция для склонения слова в зависимости от числа.
 
@@ -424,6 +454,8 @@ def decline_word(number, word_forms):
                        (форма для 1, форма для 2-4, форма для 5-20 и т.д.)
     :return: str, правильная форма слова
     """
+
+    logger.debug(f"Declining word for number: {number}, word forms: {word_forms}")
     if not isinstance(word_forms, (tuple, list)) or len(word_forms) != 3:
         raise ValueError("word_forms должен быть кортежем или списком из 3 элементов")
 
@@ -439,6 +471,8 @@ def decline_word(number, word_forms):
 
 
 def find_value_by_name(data, target_name, target_key):
+    """Извлекает имя кнопки отталкиваясь от входящего callback"""
+
     # Если data является словарем
     if isinstance(data, dict):
         # Проверяем, есть ли в словаре ключ 'name' и его значение равно target_name
@@ -511,3 +545,116 @@ def create_top_chart_func():
 
     bot.send_message(chat_id=id_dev, text=text_all_rating)
     logger.info("Exiting method: create_top_chart_func")
+
+
+def create_event():
+    """Создаёт запись в таблице event"""
+
+    pass
+
+
+def decline_name(name: str) -> tuple:
+    """
+    Склоняет мужское имя для подстановки в предложения.
+    Возвращает кортеж форм:
+    (именительный, родительный, дательный, винительный, творительный, предложный)
+    """
+    # Специальные случаи склонения
+    exceptions = {
+        'Павел': ('Павел', 'Павла', 'Павлу', 'Павла', 'Павлом', 'Павле'),
+        'Дмитрий': ('Дмитрий', 'Дмитрия', 'Дмитрию', 'Дмитрия', 'Дмитрием', 'Дмитрии'),
+        'Никита': ('Никита', 'Никиты', 'Никите', 'Никиту', 'Никитой', 'Никите'),
+        'Алексей': ('Алексей', 'Алексея', 'Алексею', 'Алексея', 'Алексеем', 'Алексее'),
+    }
+
+    if name in exceptions:
+        return exceptions[name]
+
+    # Общие правила склонения для большинства русских мужских имён
+    if name.endswith(('й', 'ь')):
+        base = name[:-1]
+        return (
+            name,
+            base + 'я',
+            base + 'ю',
+            base + 'я',
+            base + 'ем',
+            base + 'е'
+        )
+    elif name.endswith('а'):
+        base = name[:-1]
+        return (
+            name,
+            base + 'ы',
+            base + 'е',
+            base + 'у',
+            base + 'ой',
+            base + 'е'
+        )
+    else:
+        return (
+            name,
+            name + 'а',
+            name + 'у',
+            name + 'а',
+            name + 'ом',
+            name + 'е'
+        )
+
+def generate_messages(name: str) -> list:
+    """
+    Генерирует список персонализированных сообщений с правильно склонённым именем
+    """
+    # Склоняем имя
+    nom, gen, dat, acc, ins, pre = decline_name(name)
+
+    messages = [
+        f"Сигналы — это не наказание, а... нет, всё-таки наказание. На этой неделе {nom} принимает дар судьбы.",
+        f"Если сигналы не сломают {acc}, то он получит ценный опыт. Или нервный тик. В любом случае, неделя для {gen} "
+        f"обещает быть незабываемой.",
+        f"{nom} — как доброволец на минном поле, только вместо мин — сигналы. На этой неделе всё внимание на {acc}.",
+        f"На этой неделе сигналы проверят стабильность психики. Эксперимент начинается! Участник — {nom}, контрольной "
+        f"группы нет.",
+        f"У {gen} сигналы — как незваные гости: приходят без предупреждения и съедают все печеньки. На этой неделе "
+        f"{nom} — гостеприимный хозяин.",
+        f"Если бы у {gen} был выбор между сигналами и прыжком в ледяную воду… Но выбора нет. {nom}, дежурный — ты.",
+        f"Когда-нибудь {nom} будет рассказывать внукам о героической неделе битвы с сигналами. А пока фантазии в "
+        f"сторону! За работу!",
+        f"{nom} думал, что работа — это про деньги? На самом деле — про сигналы. Страдай, {name}. Страдай всю неделю!",
+        f"Сигналы для {gen} — как секс в тюрьме: не хочется, но отказаться не получится. Расслабься и «наслаждайся», "
+        f"{name}. На этой неделе ты в деле.",
+        f"На этой неделе {nom} познает дзен через сигналы. Просветление гарантировано. Или нервный срыв. Одно из двух.",
+        f"Поступило распоряжение: все сигналы этой недели переадресованы {dat}. Он теперь как супергерой, только "
+        f"вместо плаща — мешки под глазами.",
+        f"Распределение задач завершено: {nom} получает все сигналы этой недели. Можно сказать, {nom} выиграл джекпот "
+        f"(если джекпот — это тонна работы).",
+        f"На этой неделе все сигналы будут стекаться к {dat}. {nom} теперь как Йода, только вместо Силы — бесконечные "
+        f"задачи.",
+        f"На этой неделе {nom} играет в захватывающую игру 'Успей закрыть все сигналы до дедлайна'. Приз - право "
+        f"сделать это снова.",
+        f"На этой неделе {nom} становится главным пожарным цифрового ада. Огнетушитель не прилагается - тушить сигналы "
+        f"придётся голыми руками!",
+        f"На этой неделе {nom} получает эксклюзивный абонемент в спортзал для мозгов. Персональный тренер - сигналы, "
+        f"программа - 'До отказа'."
+    ]
+
+    rand_message = random.choice(messages)
+
+    return rand_message
+
+def who_is_responsible():
+    """Возвращает случайную фразу с именем того, кто разбирает сигналы на этой неделе."""
+
+    name_hero = WorkWithDb().get_data_next_dej()[2]
+    message = generate_messages(name_hero)
+    return message
+
+def notif_of_hero():
+    """Если понедельник - уведомляет подписчиков на новости IT о том кто на неделе выполняет сигналы."""
+
+    # Получаем текущий день недели (0 - понедельник, 6 - воскресенье)
+    today = datetime.today().weekday()
+
+    if today == 0:  # 0 соответствует понедельнику
+        text_message = who_is_responsible()
+        notification_for_subscribers(text_message)

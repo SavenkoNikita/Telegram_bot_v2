@@ -65,3 +65,13 @@ def error_handling(func):
             bot.send_message(chat_id=dev_id, text=error_message)
 
     return wrapper
+
+
+def error_handler(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in {func.__name__}: {e}")
+            bot.send_message(dev_id, f"Ошибка в {func.__name__}: {e}")
+    return wrapper
