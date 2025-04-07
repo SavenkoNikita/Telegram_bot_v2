@@ -41,22 +41,22 @@ if not logger.handlers:
     logger.addHandler(console_handler)
 
 
-def answer_bot(message, text_answer, keyboard=None, format_text='no'):
-    """Отправка текста и клавиатуры пользователю"""
-
-    user_id = message.forward_from.id if message.forward_from else message.from_user.id
-    count_text_message = len(text_answer) * 0.01
-    logger.debug(f"Расчёт времени набора текста: {count_text_message} секунд")
-
-    bot.send_chat_action(chat_id=user_id, action='typing')
-    time.sleep(count_text_message)
-
-    if keyboard is None:
-        bot.reply_to(message=message, text=text_answer, parse_mode='MarkdownV2' if format_text != 'no' else None)
-    else:
-        bot.send_message(chat_id=user_id, text=text_answer, reply_markup=keyboard)
-
-    logger.info(f'Текст отправлен пользователю: "{text_answer}"')
+# def answer_bot(message, text_answer, keyboard=None, format_text='no'):
+#     """Отправка текста и клавиатуры пользователю"""
+#
+#     user_id = message.forward_from.id if message.forward_from else message.from_user.id
+#     count_text_message = len(text_answer) * 0.01
+#     logger.debug(f"Расчёт времени набора текста: {count_text_message} секунд")
+#
+#     bot.send_chat_action(chat_id=user_id, action='typing')
+#     time.sleep(count_text_message)
+#
+#     if keyboard is None:
+#         bot.reply_to(message=message, text=text_answer, parse_mode='MarkdownV2' if format_text != 'no' else None)
+#     else:
+#         bot.send_message(chat_id=user_id, text=text_answer, reply_markup=keyboard)
+#
+#     logger.info(f'Текст отправлен пользователю: "{text_answer}"')
 
 
 @bot.message_handler(commands=['start'])
@@ -223,7 +223,7 @@ def callback_inline(call):
         user_id = call.from_user.id
         data = call.data.split('_')
         event_id = data[1]  # Извлекаем идентификатор события
-        entered_type = data[2]  # Извлекаем выбранный тип простоя
+        entered_type = ' '.join(data[2])  # Извлекаем выбранный тип простоя
         logger.debug(f"Entered type received: {entered_type}")
         text_message = call.message.text
 
@@ -346,6 +346,7 @@ while True:
         shutdown_message = "Бот остановлен вручную (KeyboardInterrupt)."
         logger.info(shutdown_message)
         bot.send_message(chat_id=dev_id, text=shutdown_message)
+        bot.stop_polling()
         break
     except (requests.exceptions.ReadTimeout, requests.ConnectionError) as req_error:
         logger.info(f"Сетевая ошибка обнаружена: {req_error}. Планируем повтор...")

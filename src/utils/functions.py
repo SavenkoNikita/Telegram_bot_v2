@@ -40,7 +40,7 @@ user_data = {}
 def register(call):
     """Регистрация данных о пользователе в БД"""
 
-    logger.info(f"Entering method: register with call: {call}")
+    # logger.info(f"Entering method: register with call: {call}")
     user_id = call.from_user.id
     first_name = call.from_user.first_name
     last_name = call.from_user.last_name
@@ -66,7 +66,7 @@ def register(call):
                              f'• Username:  @{username}\n')
             bot.send_message(chat_id=id_dev, text=report_to_dev)
 
-            logger.info(f"Exiting method: register with response: {rand_phrase}")
+            logger.info(f"Exiting method: register with response: {report_to_dev}")
             return rand_phrase
     else:
         list_rand_phrase = [
@@ -268,7 +268,8 @@ def notification_for(focus_group, text_message, silent=False):
     """Рассылает уведомление выбранной группе людей"""
 
     logger.info(
-        f"Entering method: notification_for with focus_group: {focus_group}, text_message: {text_message}, silent: {silent}")
+        f"Entering method: notification_for with focus_group: {focus_group}, text_message: {text_message}, "
+        f"silent: {silent}")
     list_id_user = WorkWithDb().get_list_users_id(focus_group)
 
     for user_id in list_id_user:
@@ -327,6 +328,7 @@ def schedule_next_run():
         date_str = datetime.now().strftime("%d.%m.%Y")
         time_str = f'{hour}:{minutes}'
         logger.debug(f'Function "{name_func}.tag({summary})" scheduled to execute on {date_str} at {time_str}.')
+        logger.info(f'Function "{name_func}.tag({summary})" scheduled to execute on {date_str} at {time_str}.')
         return time_str
 
     logger.info(f'{datetime.now().strftime("%d.%m.%Y %H:%M:%S")} Updating task schedules:')
