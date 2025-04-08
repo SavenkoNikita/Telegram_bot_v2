@@ -78,12 +78,16 @@ class ExchangeWithErp:
         return answer_erp
 
     def in_out(self):
-        """Обрабатывает вход и выход пользователя из системы ERP."""
+        """Обрабатывает вход и выход пользователя из системы ERP.
+
+        :return dict(in_out)"""
+
         try:
             data = self.response.json()
             self.logger.debug(f"Ответ JSON in_out: {data}")
             if self.response.status_code == 200:
                 for key, value in data.items():
+                    # print(data.items())
                     return value
             return {'error_text': 'Некорректный ответ'}
         except Exception as e:
