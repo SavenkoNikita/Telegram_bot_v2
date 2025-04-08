@@ -4,8 +4,8 @@ import logging
 from src.utils import functions
 from src.utils.functions import change_status_news
 
-
 logger = logging.getLogger(__name__)
+
 
 def building_func(call):
     """Временная заглушка для функций, которые еще не реализованы."""
@@ -97,11 +97,7 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "name": "Барахолка",
                 "access_level": "all",
                 "callback": "button_sub_bar"},
-            # "button6": {
-            #     "name": "Отписаться от барахолки",
-            #     "access_level": "all",
-            #     "callback": "button_unsub_bar"},
-            "button7": {
+            "button6": {
                 "name": "🏠 Главное меню",
                 "access_level": "all",
                 "callback": "main_menu"},
@@ -148,7 +144,7 @@ menu_storage = {  # Хранилище меню, подменю и функци�
         "callback": "button_registration"
     },
 
-    ### Дежурный ###
+    # Дежурный
     "button_menu_dej": {
         "text": "Дежурства в IT:",
         "buttons": {
@@ -249,120 +245,120 @@ menu_storage = {  # Хранилище меню, подменю и функци�
 }
 
 new_menu_storage = {
-"main_menu": {
-    "title": "🏠 Главное меню:",
-    "access_level": "all",
-    "buttons": {
-        "button_main_functions": {
-            "title": "⚙️ Основные функции",
-            "access_level": "all",
-            "buttons": {
-                "button_menu_dej": {
-                    "title": "Дежурства в IT",
-                    "access_level": "all",
-                    "buttons": {
-                        "button_dej": {
-                            "title": "Узнать кто дежурный",
-                            "access_level": "all",
-                            "buttons": {
-                                "button_dej_1": {
-                                    "title": "Имя следующего дежурного",
-                                    "access_level": "all",
-                                    "function": functions.dej_name},
-                                "button_dej_2": {
-                                    "title": "Список дежурных",
-                                    "access_level": "all",
-                                    "function": functions.list_dej}
-                            }
-                        },
-                        "button_ins_dej": {
-                            "title": "📆 Внести дежурство в календарь",
-                            "access_level": "admin",
-                            "function": functions.fill_schedule_dej},
-                        "button_upd_dej": {
-                            "title": "Внести изменения",
-                            "access_level": "admin",
-                            "function": building_func}
-                    }
-                },
-                "button_invent": {
-                    "title": "Инвентаризация",
-                    "access_level": "admin",
-                    "function": building_func},
-                "button_create_notif": {
-                    "title": "Создать уведомление",
-                    "access_level": "admin",
-                    "function": building_func},
-                "button_vacation": {
-                    "title": "📅 Остаток дней отпуска",
-                    "access_level": "all",
-                    "function": building_func},
-                "button_create_lot": {
-                    "title": "Создать лот",
-                    "access_level": "admin",
-                    "function": building_func},
-                "button_urgent_message": {
-                    "title": "⚡ Мгновенное уведомление",
-                    "access_level": "admin",
-                    "function": building_func}
-            }
-        },
-        "button_managing_subscriptions": {
-            "title": "🔔 Управление подписками",
-            "access_level": "all",
-            "buttons": {
-                "button_subscribe": {
-                    "title": "Новости IT-отдела",
-                    "access_level": "all",
-                    "function": change_status_news},
-                "button_defrosters": {
-                    "title": "Мониторинг дефростеров",
-                    "access_level": "admin",
-                    "function": building_func},
-                "button_all_sensor": {
-                    "title": "Мониторинг неисправных датчиков",
-                    "access_level": "admin",
-                    "function": building_func},
-                "button_sub_bar": {
-                    "title": "Барахолка",
-                    "access_level": "all",
-                    "function": building_func}
-            }
-        },
-        "button_additional_functions": {
-            "title": "✨ Дополнительные функции",
-            "access_level": "all",
-            "buttons": {
-                "button_send_dev": {
-                    "name": "✉️ Написать разработчику",
-                    "access_level": "all",
-                    "url": "t.me/nikita_it_remit"},
-                "button_get_app_android": {
-                    "name": "📲 Приложение 'Ремит сотрудник'",
-                    "access_level": "all",
-                    "function": functions.get_app_remit_employee},
-                "button_all_users": {
-                    "name": "Получить список всех пользователей",
-                    "access_level": "admin",
-                    "function": building_func},
-                "button_rights": {
-                    "name": "Изменить права пользователя",
-                    "access_level": "admin",
-                    "buttons": {
-                        "button_admin": {
-                            "name": "Дать пользователю права админа",
-                            "access_level": "admin",
-                            "function": building_func},
-                        "button_user": {
-                            "name": "Лишить пользователя прав админа",
-                            "access_level": "admin",
-                            "function": building_func}
+    "main_menu": {
+        "title": "🏠 Главное меню:",
+        "access_level": "all",
+        "buttons": {
+            "button_main_functions": {
+                "title": "⚙️ Основные функции",
+                "access_level": "all",
+                "buttons": {
+                    "button_menu_dej": {
+                        "title": "Дежурства в IT",
+                        "access_level": "all",
+                        "buttons": {
+                            "button_dej": {
+                                "title": "Узнать кто дежурный",
+                                "access_level": "all",
+                                "buttons": {
+                                    "button_dej_1": {
+                                        "title": "Имя следующего дежурного",
+                                        "access_level": "all",
+                                        "function": functions.dej_name},
+                                    "button_dej_2": {
+                                        "title": "Список дежурных",
+                                        "access_level": "all",
+                                        "function": functions.list_dej}
+                                }
+                            },
+                            "button_ins_dej": {
+                                "title": "📆 Внести дежурство в календарь",
+                                "access_level": "admin",
+                                "function": functions.fill_schedule_dej},
+                            "button_upd_dej": {
+                                "title": "Внести изменения",
+                                "access_level": "admin",
+                                "function": building_func}
+                        }
+                    },
+                    "button_invent": {
+                        "title": "Инвентаризация",
+                        "access_level": "admin",
+                        "function": building_func},
+                    "button_create_notif": {
+                        "title": "Создать уведомление",
+                        "access_level": "admin",
+                        "function": building_func},
+                    "button_vacation": {
+                        "title": "📅 Остаток дней отпуска",
+                        "access_level": "all",
+                        "function": building_func},
+                    "button_create_lot": {
+                        "title": "Создать лот",
+                        "access_level": "admin",
+                        "function": building_func},
+                    "button_urgent_message": {
+                        "title": "⚡ Мгновенное уведомление",
+                        "access_level": "admin",
+                        "function": building_func}
+                }
+            },
+            "button_managing_subscriptions": {
+                "title": "🔔 Управление подписками",
+                "access_level": "all",
+                "buttons": {
+                    "button_subscribe": {
+                        "title": "Новости IT-отдела",
+                        "access_level": "all",
+                        "function": change_status_news},
+                    "button_defrosters": {
+                        "title": "Мониторинг дефростеров",
+                        "access_level": "admin",
+                        "function": building_func},
+                    "button_all_sensor": {
+                        "title": "Мониторинг неисправных датчиков",
+                        "access_level": "admin",
+                        "function": building_func},
+                    "button_sub_bar": {
+                        "title": "Барахолка",
+                        "access_level": "all",
+                        "function": building_func}
+                }
+            },
+            "button_additional_functions": {
+                "title": "✨ Дополнительные функции",
+                "access_level": "all",
+                "buttons": {
+                    "button_send_dev": {
+                        "name": "✉️ Написать разработчику",
+                        "access_level": "all",
+                        "url": "t.me/nikita_it_remit"},
+                    "button_get_app_android": {
+                        "name": "📲 Приложение 'Ремит сотрудник'",
+                        "access_level": "all",
+                        "function": functions.get_app_remit_employee},
+                    "button_all_users": {
+                        "name": "Получить список всех пользователей",
+                        "access_level": "admin",
+                        "function": building_func},
+                    "button_rights": {
+                        "name": "Изменить права пользователя",
+                        "access_level": "admin",
+                        "buttons": {
+                            "button_admin": {
+                                "name": "Дать пользователю права админа",
+                                "access_level": "admin",
+                                "function": building_func},
+                            "button_user": {
+                                "name": "Лишить пользователя прав админа",
+                                "access_level": "admin",
+                                "function": building_func}
+                        }
                     }
                 }
             }
         }
     }
-}
 }
 
 
