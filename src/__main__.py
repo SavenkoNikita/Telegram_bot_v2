@@ -11,8 +11,11 @@ import dotenv
 import requests
 import schedule
 import telebot
+from pygments.lexers import markup
 from telebot import types
 from telebot_calendar import Calendar, CallbackData
+from src.handlers.commands.command_start import process_start_command
+from src.handlers.commands.command_menu import process_menu_command
 
 import src.utils.menu_formation as menu_form
 from src.utils.functions import unknown_user, user_data, show_calendar, ask_for_name, finalize_event, \
@@ -41,60 +44,33 @@ if not logger.handlers:
     logger.addHandler(console_handler)
 
 
-# def answer_bot(message, text_answer, keyboard=None, format_text='no'):
-#     """Отправка текста и клавиатуры пользователю"""
-#
-#     user_id = message.forward_from.id if message.forward_from else message.from_user.id
-#     count_text_message = len(text_answer) * 0.01
-#     logger.debug(f"Расчёт времени набора текста: {count_text_message} секунд")
-#
-#     bot.send_chat_action(chat_id=user_id, action='typing')
-#     time.sleep(count_text_message)
-#
-#     if keyboard is None:
-#         bot.reply_to(message=message, text=text_answer, parse_mode='MarkdownV2' if format_text != 'no' else None)
-#     else:
-#         bot.send_message(chat_id=user_id, text=text_answer, reply_markup=keyboard)
-#
-#     logger.info(f'Текст отправлен пользователю: "{text_answer}"')
+@bot.message_handler(commands=['start', 'menu'])
+def command_handler(message):
+    """Обработчик команд"""
 
-
-@bot.message_handler(commands=['start'])
-def start_command(message):
-    """Отправка приветственного сообщения и создание кнопки регистрации"""
-
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton(text='Зарегистрироваться', callback_data='button_registration'))
-
-    hello_message = (f'Добро пожаловать {message.from_user.first_name}!\n\n'
-                     f'Это бот IT отдела. Для полного списка команд используйте меню.\n\n'
-                     f'Необходимо пройти регистрацию, предоставив согласие на обработку данных:\n'
-                     f'• ID: {message.from_user.id}\n'
-                     f'• Имя: {message.from_user.first_name}\n'
-                     f'• Фамилия: {message.from_user.last_name}\n'
-                     f'• Username: @{message.from_user.username}\n')
-
-    bot.send_message(message.chat.id, hello_message, reply_markup=markup)
-    logger.info(f"Сообщение приветствия отправлено: {message.from_user.first_name} (ID: {message.from_user.id})")
-
-
-# Обработчик команды /menu
-@bot.message_handler(commands=['menu'])
-def send_welcome(message):
-    """Обработка команды /menu и открытие главного меню"""
-
+    text_message = message.text
     user_id = message.from_user.id
-    answer = unknown_user(message)
+    first_name = message.from_user.first_name
+    last_name = message.from_user.last_name
+    username = message.from_user.username
 
-    if answer is True:
-        user_access_level = WorkWithDb().check_access_level_user(user_id=user_id)
-        markup = menu_form.create_markup("main_menu", user_access_level)
-        if markup:
-            bot.send_message(user_id, menu_form.menu_storage["main_menu"]["text"], reply_markup=markup)
+    if text_message == '/start':
+        data = process_start_command(user_id, first_name, last_name, username)
+        hello_message = data[0]
+        button = data[1]
+        bot.send_message(chat_id=user_id, text=hello_message, reply_markup=button)
+
+    elif unknown_user(message) is True:  # Если пользователь есть в БД
+
+        if text_message == '/menu':
+            data_menu = process_menu_command(user_id)
+            title_menu = data_menu[0]
+            menu = data_menu[1]
+            bot.send_message(chat_id=user_id, text=title_menu, reply_markup=menu)
             logger.info(f"Главное меню открыто для пользователя: {user_id}")
-    # else:
-    #     bot.send_message(user_id, text=answer[0], reply_markup=answer[1])
-    #     logger.warning(f"Доступ к меню ограничен для пользователя: {user_id}")
+
+        else:
+            pass
 
 
 @bot.message_handler(content_types=['text'])
