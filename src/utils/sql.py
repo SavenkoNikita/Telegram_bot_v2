@@ -2,6 +2,12 @@ import datetime
 import logging
 import os
 import sqlite3
+import time
+
+# from datetime import timedelta
+
+# from google.protobuf.internal.test_bad_identifiers_pb2 import descriptor
+from src.utils.interactions_with_services import WorkWithYouGile as YouGile
 
 
 class WorkWithDb:
@@ -41,7 +47,14 @@ class WorkWithDb:
                               '"user_first_name" TEXT NOT NULL'],
             'events': ['"date" TEXT NOT NULL',
                        '"text_event" TEXT NOT NULL'],
-            'in_out': ['"last_checkpoint" TEXT', ]
+            'in_out': ['"last_checkpoint" TEXT', ],
+            'sensors': ['"id_sensor" INTEGER UNIQUE',
+                        '"name_sensor" TEXT',
+                        '"last_value" TEXT',
+                        '"ip_host" TEXT',
+                        '"last_update" TEXT',
+                        '"date_of_breakdown" TEXT',
+                        '"id_task_yougile" TEXT UNIQUE']
         }
         # self.is_connected = self.sqlite_connection is not None
 
@@ -104,13 +117,17 @@ class WorkWithDb:
             self.logger.error(f"Ошибка при закрытии соединения: {e}")
 
     def create_db_if_not(self):
+        """Создаёт БД если отсутствует"""
+
         db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'telegram_bot.db')
         if not os.path.exists(db_path):
             sqlite3.connect(db_path).execute("PRAGMA foreign_keys = ON;").close()
             self.logger.info(f"База данных создана: {db_path}")
         return db_path
 
-    def create_table(self, name):
+    def create_table_if_not(self, name):
+        """Создаёт таблицу с именем {name} если она описана в {self.tables}"""
+
         if name not in self.tables:
             self.logger.error(f"Table '{name}' does not exist in configuration. Cannot create.")
             return
@@ -118,13 +135,17 @@ class WorkWithDb:
         if not self.check_table_exists(name):
             columns = ", ".join(self.tables[name])
             create_query = f'CREATE TABLE {name} (id INTEGER PRIMARY KEY AUTOINCREMENT, {columns})'
-            self.logger.debug(f"Executing query to create table '{name}' with columns: {columns}")
+            self.logger.debug(f"Выполнение запроса для создания таблицы '{name}' с колонками: {columns}")
             with self.sqlite_connection as conn:
                 conn.execute(create_query)
                 conn.execute("PRAGMA foreign_keys = ON;")
 
     def check_table_exists(self, name):
-        """Проверяет наличие таблицы в базе данных."""
+        """Проверяет наличие таблицы в базе данных"""
+
+        self.create_db_if_not()
+        time.sleep(1)
+
         query = "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?"
         with self.sqlite_connection as conn:
             cursor = conn.cursor()
@@ -140,7 +161,7 @@ class WorkWithDb:
             self.logger.info(f"Таблица '{table_name}' не найдена. Создаю таблицу и недостающие таблицы.")
             for table in self.tables:
                 if not self.check_table_exists(table):
-                    self.create_table(table)
+                    self.create_table_if_not(table)
 
             for trigger_name, action in [
                 ('after_user_insert_to_setting_users',
@@ -166,7 +187,7 @@ class WorkWithDb:
     def insert_new_user(self, user_id, first_name, last_name, username):
         """Добавляет нового пользователя в таблицу users."""
 
-        self.create_table('users')  # Ensure 'users' table exists
+        self.create_table_if_not('users')  # Ensure 'users' table exists
         self.tables['setting_users'] = ['"user_id" INTEGER REFERENCES users(user_id) ON DELETE CASCADE',
                                         '"user_first_name" TEXT',
                                         '"user_last_name" TEXT',
@@ -174,7 +195,7 @@ class WorkWithDb:
                                         '"baraholka" TEXT DEFAULT "False"',
                                         '"rights" TEXT DEFAULT "user"',
                                         '"use_bot" TEXT DEFAULT "True"']  # Adjust table definition
-        self.create_table('setting_users')  # Ensure 'setting_users' table exists
+        self.create_table_if_not('setting_users')  # Ensure 'setting_users' table exists
 
         if not self.check_for_existence(user_id):
             insert_query = ('INSERT INTO users (user_id, user_first_name, user_last_name, username, date_registration) '
@@ -190,7 +211,7 @@ class WorkWithDb:
         """Добавляет дежурного в таблицу duty_schedule."""
 
         try:
-            self.create_table('duty_schedule')
+            self.create_table_if_not('duty_schedule')
 
             insert_query = (
                 'INSERT INTO duty_schedule ("first_date", "last_date", "user_first_name") '
@@ -208,7 +229,7 @@ class WorkWithDb:
     def get_data_next_dej(self):
         """Возвращает данные следующего дежурного."""
 
-        self.create_table('duty_schedule')
+        self.create_table_if_not('duty_schedule')
 
         select_query = (f"SELECT * "
                         f"FROM duty_schedule "
@@ -232,7 +253,7 @@ class WorkWithDb:
     def get_data_list_dej(self):
         """Возвращает ближайшие 10 дежурств."""
 
-        self.create_table('duty_schedule')
+        self.create_table_if_not('duty_schedule')
 
         select_query = (f"SELECT * "
                         f"FROM duty_schedule "
@@ -399,7 +420,7 @@ class WorkWithDb:
         """Проверяет есть ли сегодня события и уведомляет всех пользователей"""
 
         if self.check_table_exists('events') is False:
-            self.create_table('events')
+            self.create_table_if_not('events')
 
         select_query = ('SELECT * '
                         'FROM events '
@@ -417,7 +438,7 @@ class WorkWithDb:
         """Достаёт из БД последний чекпоинт"""
 
         name_table = 'in_out'
-        self.create_table(name_table)
+        self.create_table_if_not(name_table)
 
         select_query = (f'SELECT last_checkpoint '
                         f'FROM {name_table}')
@@ -448,43 +469,126 @@ class WorkWithDb:
                 conn.execute(insert_query, (checkpoint,))
         self.logger.info(f"Checkpoint successfully updated/inserted: {checkpoint}")
 
+    def update_data_sensors(self, id_sensor, name_sensor, last_value, ip_host):
+        """Обновляет или добавляет данные о сенсорах с проверкой неисправностей"""
 
-# class ConnectionManager:
-#     """Класс для управления соединением с базой данных"""
-#
-#     def __init__(self):
-#         self.db = WorkWithDb()
-#
-#     def __enter__(self):
-#         """Метод, который выполняется при входе в контекстный менеджер.
-#         Устанавливает соединение с базой данных и открывает курсор.
-#
-#         Использование:
-#         with ConnectionManager() as db:
-#             # Работа с базой данных через объект db
-#         """
-#         self.db = WorkWithDb()
-#         self.db.__enter__()
-#         return self.db
-#
-#     def __exit__(self, exc_type: type, exc_val: BaseException, exc_tb: object) -> bool:
-#         """
-#         Метод вызывается при выходе из контекстного менеджера.
-#
-#         Если во время работы в контекстном менеджере возникает ошибка, то выполняется откат транзакции (rollback).
-#         В противном случае все изменения фиксируются (commit). В любом случае соединение с базой данных закрывается.
-#
-#         Использование:
-#         with ConnectionManager() as db:
-#             # Выполнение операций с объектом db
-#             # Например, вызов методов для работы с базой данных
-#
-#         Если в блоке `with` возникает исключение, коммит не будет выполнен, а изменения будут отменены.
-#         """
-#         self.db.__exit__(exc_type, exc_val, exc_tb)
-#         self.db.close_connection()
-#         self.db = None
-#         return True
+        name_table = 'sensors'
+        self.create_table_if_not(name_table)
+
+        with self.sqlite_connection as conn:
+            cursor = conn.cursor()
+            now_date = datetime.datetime.now()
+            now_str = now_date.strftime("%Y-%m-%d %H:%M:%S")
+
+            try:
+                # Проверяем существование датчика и получаем текущие данные
+                cursor.execute(
+                    'SELECT date_of_breakdown, id_task_yougile, last_update FROM sensors WHERE name_sensor = ?',
+                    (name_sensor,)
+                )
+                existing_data = cursor.fetchone()
+
+                try:
+                    last_value_float = float(last_value)
+                    is_breakdown = last_value_float < -50 or last_value_float > 50
+                except (ValueError, TypeError):
+                    print(f"Некорректное значение датчика {name_sensor}: {last_value}")
+                    return
+
+                if existing_data is None:
+                    # Новый датчик - просто добавляем
+                    cursor.execute(
+                        'INSERT INTO sensors (id_sensor, name_sensor, last_value, ip_host, last_update) '
+                        'VALUES (?, ?, ?, ?, ?)',
+                        (id_sensor, name_sensor, last_value_float, ip_host, now_str)
+                    )
+                else:
+                    existing_breakdown, existing_task, last_update = existing_data
+
+                    if is_breakdown:
+                        # Обработка неисправного состояния
+                        if existing_breakdown is None:
+                            # Первое обнаружение неисправности
+                            cursor.execute(
+                                'UPDATE sensors SET '
+                                'id_sensor=?, last_value=?, ip_host=?, last_update=?, date_of_breakdown=? '
+                                'WHERE name_sensor=?',
+                                (id_sensor, last_value_float, ip_host, now_str, now_str, name_sensor)
+                            )
+                            print(f"Зафиксирована неисправность датчика {name_sensor}")
+                        else:
+                            # Неисправность продолжается
+                            breakdown_date = datetime.datetime.strptime(existing_breakdown, "%Y-%m-%d %H:%M:%S")
+
+                            if existing_task is None and (now_date - breakdown_date) >= datetime.timedelta(hours=1):
+                                # Неисправность более часа - создаем задачу
+                                error_message = f'Датчик «{name_sensor}» неисправен более часа'
+                                str_date = breakdown_date.strftime("%d.%m.%Y %H:%M:%S")
+                                description = (
+                                    f'• Дата обнаружения: {str_date}<br>'
+                                    f'• Хост: {ip_host}<br>'
+                                    f'• Температура: {last_value_float}<br>'
+                                    f'• ID сенсора: {id_sensor}')
+
+                                # Создаем задачу в YouGile и сохраняем ID
+                                task_id = YouGile().post_task(
+                                    title_task=error_message,
+                                    description_text=description,
+                                    color='red'
+                                )
+
+                                cursor.execute(
+                                    'UPDATE sensors SET '
+                                    'id_sensor=?, last_value=?, ip_host=?, last_update=?, id_task_yougile=? '
+                                    'WHERE name_sensor=?',
+                                    (id_sensor, last_value_float, ip_host, now_str, task_id, name_sensor)
+                                )
+                            else:
+                                # Просто обновляем основные данные
+                                cursor.execute(
+                                    'UPDATE sensors SET '
+                                    'id_sensor=?, last_value=?, ip_host=?, last_update=? '
+                                    'WHERE name_sensor=?',
+                                    (id_sensor, last_value_float, ip_host, now_str, name_sensor)
+                                )
+                    else:
+                        # Датчик в норме
+                        if existing_breakdown is not None or existing_task is not None:
+                            # Восстановление после неисправности
+                            if existing_task is not None:
+                                # Удаляем задачу в YouGile перед очисткой полей
+                                try:
+                                    YouGile().delete_task(id_task=existing_task)
+                                    print(f"Задача YouGile {existing_task} для датчика {name_sensor} удалена")
+                                except Exception as e:
+                                    print(f"Ошибка при удалении задачи YouGile: {str(e)}")
+
+                            # Очищаем поля неисправности
+                            cursor.execute(
+                                'UPDATE sensors SET '
+                                'id_sensor=?, last_value=?, ip_host=?, last_update=?, '
+                                'date_of_breakdown=NULL, id_task_yougile=NULL '
+                                'WHERE name_sensor=?',
+                                (id_sensor, last_value_float, ip_host, now_str, name_sensor)
+                            )
+                            print(f"Датчик {name_sensor} восстановлен")
+                        else:
+                            # Просто обновление данных
+                            cursor.execute(
+                                'UPDATE sensors SET '
+                                'id_sensor=?, last_value=?, ip_host=?, last_update=? '
+                                'WHERE name_sensor=?',
+                                (id_sensor, last_value_float, ip_host, now_str, name_sensor)
+                            )
+
+                conn.commit()
+
+            except sqlite3.Error as e:
+                print(f"Ошибка базы данных при обработке датчика {name_sensor}: {str(e)}")
+                conn.rollback()
+            except Exception as e:
+                print(f"Неожиданная ошибка при обработке датчика {name_sensor}: {str(e)}")
+                conn.rollback()
 
 
 class StatisticsManager:
@@ -552,6 +656,7 @@ class StatisticsManager:
 
     def collect_statistical_user(self, user_id):
         """Увеличивает статистику пользователя."""
+
         self.logger.info(f"Incrementing statistics for user_id: {user_id}")
         update_query = ('UPDATE user_statistics '
                         'SET today = today + 1, month = month + 1, all_time = all_time + 1 '
@@ -564,6 +669,7 @@ class StatisticsManager:
 
     def collect_statistical_func(self, name_func):
         """Подсчитывает сколько раз была вызвана функция."""
+
         self.logger.info(f"Incrementing function call count for: {name_func}")
         insert_query = ('INSERT INTO function_statistics (name, today, month, all_time) '
                         'VALUES (?, 1, 1, 1) '

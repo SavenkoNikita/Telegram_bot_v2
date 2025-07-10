@@ -12,17 +12,16 @@ import requests
 import schedule
 import telebot
 from pygments.lexers import markup
-from telebot import types
 from telebot_calendar import Calendar, CallbackData
-from src.handlers.commands.command_start import process_start_command
-from src.handlers.commands.command_menu import process_menu_command
 
 import src.utils.menu_formation as menu_form
+from src.handlers.commands.command_menu import process_menu_command
+from src.handlers.commands.command_start import process_start_command
 from src.utils.functions import unknown_user, user_data, show_calendar, ask_for_name, finalize_event, \
     post_answer_of_event, schedule_next_run, update_data_door, create_top_chart_func
 from src.utils.logger_setup import setup_logger
 from src.utils.sql import WorkWithDb, StatisticsManager
-
+from src.utils.tracking_sensors import TrackingSensor
 dotenv.load_dotenv()
 bot_token = os.getenv('BOT_TOKEN')
 if not bot_token:
@@ -199,7 +198,7 @@ def callback_inline(call):
         user_id = call.from_user.id
         data = call.data.split('_')
         event_id = data[1]  # Извлекаем идентификатор события
-        entered_type = ' '.join(data[2])  # Извлекаем выбранный тип простоя
+        entered_type = data[2]  # Извлекаем выбранный тип простоя
         logger.debug(f"Entered type received: {entered_type}")
         text_message = call.message.text
 
@@ -245,6 +244,8 @@ def callback_inline(call):
     # Если это подменю с функцией
     if "function" in menu:
         try:
+            # Счётчик выполнения функций для сбора статистики
+            StatisticsManager().collect_statistical_func(name_func=menu_key)
             result = menu["function"](call)
         except Exception as error:
             logger.exception(f"Error executing menu function {menu_key}: {error}")
@@ -256,8 +257,6 @@ def callback_inline(call):
             bot.send_message(user_id, text=text, reply_markup=keyboard)
         else:
             bot.send_message(user_id, result)
-        # Счётчик выполнения функций для сбора статистики
-        StatisticsManager().collect_statistical_func(name_func=menu_key)
     # Если это переход на другое меню
     elif "redirect" in menu:
         user_access_level = WorkWithDb().check_access_level_user(user_id=user_id)
@@ -301,6 +300,7 @@ schedule.every().day.at('00:00').do(job_every_month, StatisticsManager().reset_f
 
 # schedule.every().minute.do(update_data_door)
 schedule.every(10).seconds.do(update_data_door)
+schedule.every(1).minutes.do(TrackingSensor().check_all_sensors)
 
 
 def run_scheduler():

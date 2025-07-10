@@ -87,7 +87,7 @@ def unknown_user(message):
     Иначе возвращает True"""
 
     user_id = message.from_user.id
-    if WorkWithDb().check_for_existence(user_id) is False:
+    if WorkWithDb().check_for_existence(user_id) is False:  # Если пользователя нет в БД
         # Инициализация клавиатуры
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton(text='Зарегистрироваться', callback_data='button_registration'))

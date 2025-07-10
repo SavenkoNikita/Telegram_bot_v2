@@ -1,9 +1,11 @@
 import logging
 import os
-
 import dotenv
 import requests
 from requests.auth import HTTPBasicAuth
+import datetime
+import http.client
+import json
 
 dotenv.load_dotenv()
 dev_id = os.getenv('DEV_ID')
@@ -110,3 +112,100 @@ class ExchangeWithErp:
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Ошибка POST-запроса: {str(e)}")
             return None
+
+
+class WorkWithYouGile:
+    """Обработка задач в YouGile"""
+
+    def __init__(self):
+        self.column_all_task = os.getenv("ID_COLUMN_ALL_TASK")
+        self.token_yougile = os.getenv("TOKEN_YOUGILE")
+        self.connect = http.client.HTTPSConnection("ru.yougile.com")
+        self.headers = {
+            'Content-Type': "application/json",
+            'Authorization': f"Bearer {self.token_yougile}",
+            'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/75.0.3770.142 Safari/537.36"
+        }
+
+    def post_task(self, title_task='Задача создана с помощью Python', description_text='', color='primary'):
+        """Создаёт задачу с названием {title_task}(если не указать = 'Задача создана с помощью Python'),
+        описанием {description_text}(если не указать = ''), и цвет {color}(по умолчанию бесцветный primary. 
+        Доступны primary, gray, red, pink, yellow, green, turquoise, blue, violet), 
+        в колонке {self.column_all_task}.
+
+        Пример использования:
+
+        title = f'Датчик «{name_sensor}» неисправен более часа'
+        str_date = datetime.datetime.strftime(breakdown_date, "%d.%m.%Y %H:%M:%S")
+        description = (
+            f'• Дата обнаружения: {str_date}<br>'
+            f'• Хост: {ip_host}<br>'
+            f'• Температура: {last_value_float}<br>'
+            f'• ID сенсора: {id_sensor}')
+        YouGile().post_task(title_task=title, description_text=description, color='red')"""
+
+        payload = (
+            "{"
+            f"\n  \"title\": \"{title_task}\","
+            f"\n  \"columnId\": \"{self.column_all_task}\","
+            f"\n  \"description\": \"{description_text}\","
+            f"\n  \"color\": \"task-{color}\""
+            "}"
+        )
+
+        # print(payload)
+
+        self.connect.request("POST", "/api-v2/tasks", payload.encode('utf-8'), self.headers)
+        # print(self.headers)
+
+        res = self.connect.getresponse()
+        data = res.read()
+        response_status = res.status
+        # print(data)
+
+        if response_status == 201:
+            response_text = data.decode("utf-8")
+            response_dict = json.loads(response_text)
+            id_task_yougile = response_dict.get('id')
+            print(f'Создана задача {title_task} в YouGile')
+            return id_task_yougile
+        elif response_status == 429:
+            return None
+        else:
+            print(f'Ошибка при создании задачи {title_task} в YouGile\nПодробности: {data}')
+            return None
+
+    def get_data_task(self, id_task):
+        self.connect.request("GET", f"/api-v2/tasks/{id_task}", headers=self.headers)
+
+        res = self.connect.getresponse()
+        data = res.read()
+        response_status = res.status
+        if response_status == 200:
+            response_text = data.decode("utf-8")
+            response_dict = json.loads(response_text)
+            return response_dict
+        else:
+            return None
+
+    def delete_task(self, id_task):
+        data_task = self.get_data_task(id_task)
+        datetime_now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+
+        if data_task is not None:
+            id_column = data_task.get('columnId')
+            status_completed = data_task.get('completed')
+            title_task = data_task.get('title')
+
+            if status_completed is False:
+                payload = ('{\n  \"deleted\": true,\n  '
+                           f'\"columnId\": \"{id_column}\"'
+                           '}')
+
+                self.connect.request("PUT", f"/api-v2/tasks/{id_task}", payload, self.headers)
+
+                res = self.connect.getresponse()
+                response_status = res.status
+                if response_status == 200:
+                    print(f'Date and time: {datetime_now}\nЗадача "{title_task}" с ID "{id_task}" удалена.\n')
