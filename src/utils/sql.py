@@ -4,9 +4,6 @@ import os
 import sqlite3
 import time
 
-# from datetime import timedelta
-
-# from google.protobuf.internal.test_bad_identifiers_pb2 import descriptor
 from src.utils.interactions_with_services import WorkWithYouGile as YouGile
 
 
@@ -556,12 +553,12 @@ class WorkWithDb:
                         if existing_breakdown is not None or existing_task is not None:
                             # Восстановление после неисправности
                             if existing_task is not None:
-                                # Удаляем задачу в YouGile перед очисткой полей
+                                # Выполняем задачу в YouGile перед очисткой полей
                                 try:
-                                    YouGile().delete_task(id_task=existing_task)
-                                    print(f"Задача YouGile {existing_task} для датчика {name_sensor} удалена")
+                                    YouGile().complete_task(id_task=existing_task)
+                                    print(f"Задача YouGile {existing_task} для датчика {name_sensor} выполнена")
                                 except Exception as e:
-                                    print(f"Ошибка при удалении задачи YouGile: {str(e)}")
+                                    print(f"Ошибка при выполнении задачи YouGile: {str(e)}")
 
                             # Очищаем поля неисправности
                             cursor.execute(
