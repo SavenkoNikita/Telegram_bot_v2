@@ -3,6 +3,7 @@ import src.utils.menu_formation as menu_form
 from src.utils.sql import WorkWithDb, StatisticsManager
 
 logger = logging.getLogger(__name__)
+processed_callbacks = set()
 
 
 def handle_menu_callback(bot, call, menu_key):
@@ -25,6 +26,17 @@ def handle_menu_callback(bot, call, menu_key):
             from .swap_dej_handler import process_swap_confirmation
             from_user_id = int(call.data.split("_")[2])
             process_swap_confirmation(bot, call, from_user_id, False)
+            return
+        elif call.data.startswith("confirm_swap_") or call.data.startswith("reject_swap_"):
+            # Проверяем, не был ли callback уже обработан
+            if call.message.message_id in processed_callbacks:
+                bot.answer_callback_query(call.id)
+                return
+            processed_callbacks.add(call.message.message_id)
+
+            from .swap_dej_handler import process_swap_confirmation
+            from_user_id = int(call.data.split("_")[2])
+            process_swap_confirmation(bot, call, from_user_id, call.data.startswith("confirm_swap_"))
             return
 
         bot.answer_callback_query(call.id, "Ошибка: меню не найдено.")

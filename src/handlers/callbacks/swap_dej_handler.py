@@ -135,6 +135,9 @@ def process_swap_confirmation(bot, call, from_user_id, confirmed):
 
     # Проверяем наличие данных обмена
     if from_user_id not in user_data or 'swap_dej' not in user_data[from_user_id]:
+        # Если данные уже удалены (обмен уже обработан), просто выходим
+        if confirmed:
+            return
         bot.send_message(target_user_id, "❌ Ошибка: данные обмена не найдены или устарели.")
         return
 
@@ -160,7 +163,7 @@ def process_swap_confirmation(bot, call, from_user_id, confirmed):
             return f"{start_date} - {end_date}"
         except ValueError as e:
             logger.error(f"Ошибка форматирования даты: {e}")
-            return f"{start} - {end}"  # Возвращаем в исходном формате, если не удалось преобразовать
+            return f"{start} - {end}"
 
     # Форматируем даты для сообщений
     target_dates = format_date_range(target_dej[1], target_dej[2])
@@ -208,6 +211,9 @@ def process_swap_confirmation(bot, call, from_user_id, confirmed):
             "❌ Вы отклонили запрос на обмен дежурствами."
         )
 
-    # Очищаем данные обмена
+    # Очищаем данные обмена в любом случае
     if from_user_id in user_data:
         del user_data[from_user_id]
+
+    # Отвечаем на callback, чтобы Telegram знал, что он обработан
+    bot.answer_callback_query(call.id)
