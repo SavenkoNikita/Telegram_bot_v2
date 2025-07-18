@@ -6,7 +6,6 @@ import logging
 import os
 import threading
 import time
-
 import dotenv
 import requests
 import schedule
@@ -14,14 +13,25 @@ import telebot
 from pygments.lexers import markup
 from telebot_calendar import Calendar, CallbackData
 
-import src.utils.menu_formation as menu_form
-from src.handlers.commands.command_menu import process_menu_command
-from src.handlers.commands.command_start import process_start_command
-from src.utils.functions import unknown_user, user_data, show_calendar, ask_for_name, finalize_event, \
-    post_answer_of_event, schedule_next_run, update_data_door, create_top_chart_func
+# Импортируем всё через единый интерфейс handlers
+from src.handlers import (
+    process_start_command,
+    process_menu_command,
+    handle_calendar_callback,
+    handle_event_callback,
+    handle_name_callback,
+    handle_cancel_callback,
+    handle_menu_callback
+)
+from src.utils.functions import (
+    unknown_user,
+    schedule_next_run,
+    update_data_door,
+    create_top_chart_func)
 from src.utils.logger_setup import setup_logger
-from src.utils.sql import WorkWithDb, StatisticsManager
+from src.utils.sql import StatisticsManager
 from src.utils.tracking_sensors import TrackingSensor
+
 dotenv.load_dotenv()
 bot_token = os.getenv('BOT_TOKEN')
 if not bot_token:
@@ -66,7 +76,7 @@ def command_handler(message):
             title_menu = data_menu[0]
             menu = data_menu[1]
             bot.send_message(chat_id=user_id, text=title_menu, reply_markup=menu)
-            logger.info(f"Главное меню открыто для пользователя: {user_id}")
+            logger.info(f"Главное меню открыто для пользователя: {username} ({user_id})")
 
         else:
             pass
@@ -80,206 +90,30 @@ def talk(message):
 
 # Обработчик callback-запросов
 @bot.callback_query_handler(func=lambda call: True)
-def callback_inline(call):
-    """Обработчик Inline-запросов"""
+def callback_dispatcher(call):
+    """Центральный диспетчер callback-запросов"""
+    try:
+        if not call.from_user or not call.from_user.id:
+            raise ValueError("Не удалось определить пользователя")
 
-    menu_key = call.data
-    menu = menu_form.menu_storage.get(menu_key)
+        # Статистика активности
+        StatisticsManager().collect_statistical_user(user_id=call.from_user.id)
 
-    if call.from_user and hasattr(call.from_user, 'id'):
-        user_id = call.from_user.id
-    else:
-        logger.error(f"Unable to determine user ID from call: {call}")
-        bot.answer_callback_query(call.id, "Ошибка: данные пользователя не обнаружены.")
-        return
-
-    # Счётчик активности пользователя
-    StatisticsManager().collect_statistical_user(user_id=user_id)
-
-    # # КАЛЕНДАРЬ
-    # if call.data.startswith(calendar_callback.prefix):
-    #     name, action, year, month, day = call.data.split(calendar_callback.sep)
-    #     date = calendar.calendar_query_handler(bot, call, name, action, year, month, day)
-    #
-    #     if action == "DAY":
-    #         date = date.date()
-    #         user_id = call.from_user.id
-    #         if user_id not in user_data:
-    #             user_data[user_id] = {}
-    #
-    #         if "first_date" not in user_data[user_id]:
-    #             if date < datetime.datetime.now().date():
-    #                 bot.send_message(call.message.chat.id,
-    #                                  "Вы выбрали прошедшую дату. Пожалуйста, выберите дату снова.")
-    #                 return
-    #             user_data[user_id]["first_date"] = date
-    #             show_calendar(chat_id=call.message.chat.id, title="Дежурство до какой даты (включительно)?")
-    #         else:
-    #             if date < user_data[user_id]["first_date"]:
-    #                 bot.send_message(call.message.chat.id,
-    #                                  "Конечная дата должна быть позже начальной. Пожалуйста, выберите дату снова.")
-    #                 return
-    #             user_data[user_id]["last_date"] = date
-    #             ask_for_name(call.message.chat.id)
-    #
-    #     elif action == "CANCEL":
-    #         user_id = call.from_user.id
-    #         bot.send_message(call.message.chat.id, "Операция отменена.")
-    #         if user_id in user_data:
-    #             del user_data[user_id]
-
-    # КАЛЕНДАРЬ
-    if call.data.startswith(calendar_callback.prefix):
-        name, action, year, month, day = call.data.split(calendar_callback.sep)
-        date = calendar.calendar_query_handler(bot, call, name, action, year, month, day)
-
-        if action == "DAY":
-            date = date.date()
-            user_id = call.from_user.id
-            if user_id not in user_data:
-                user_data[user_id] = {'calendar_mode': 'range'}  # По умолчанию режим диапазона
-
-            # Получаем текущий режим работы календаря (если был установлен)
-            calendar_mode = user_data[user_id].get('calendar_mode', 'range')
-
-            if calendar_mode == 'range':
-                # Обработка выбора диапазона дат (старая логика)
-                if date < datetime.datetime.now().date():
-                    bot.send_message(call.message.chat.id,
-                                     "Вы выбрали прошедшую дату. Пожалуйста, выберите дату снова.")
-                    return
-
-                if "first_date" not in user_data[user_id]:
-                    user_data[user_id]["first_date"] = date
-                    show_calendar(chat_id=call.message.chat.id,
-                                  title="Дежурство до какой даты (включительно)?",
-                                  select_range=True)
-                else:
-                    if date < user_data[user_id]["first_date"]:
-                        bot.send_message(call.message.chat.id,
-                                         "Конечная дата должна быть позже начальной. Пожалуйста, выберите дату снова.")
-                        return
-                    user_data[user_id]["last_date"] = date
-                    ask_for_name(call.message.chat.id)
-            else:
-                # Обработка выбора одной даты (новая логика)
-                user_data[user_id]["selected_date"] = date
-                # Здесь можно вызвать функцию-обработчик для одиночной даты
-                if 'date_handler' in user_data[user_id]:
-                    user_data[user_id]['date_handler'](call.message.chat.id, date)
-                else:
-                    bot.send_message(call.message.chat.id, f"Выбрана дата: {date.strftime('%d.%m.%Y')}")
-                # Очищаем данные после использования
-                del user_data[user_id]
-
-        elif action == "CANCEL":
-            user_id = call.from_user.id
-            bot.send_message(call.message.chat.id, "Операция отменена.")
-            if user_id in user_data:
-                del user_data[user_id]
-
-    # Обработка выбора имени
-    elif call.data.startswith("name_"):
-        user_id = call.from_user.id
-        name = call.data.split("_")[1]
-        user_data[user_id]["name"] = name
-        bot.delete_message(call.message.chat.id, call.message.message_id)
-        finalize_event(call.message.chat.id, user_id)
-    elif call.data == "CANCEL":
-        user_id = call.from_user.id
-        bot.delete_message(call.message.chat.id, call.message.message_id)
-        bot.send_message(call.message.chat.id, "Операция отменена.")
-        if user_id in user_data:
-            del user_data[user_id]
-    elif call.data == "DELETE":
-        user_id = call.from_user.id
-        bot.delete_message(call.message.chat.id, call.message.message_id)
-    elif call.data.startswith("event_"):  # События простоя
-        user_id = call.from_user.id
-        data = call.data.split('_')
-        event_id = data[1]  # Извлекаем идентификатор события
-        entered_type = data[2]  # Извлекаем выбранный тип простоя
-        logger.debug(f"Entered type received: {entered_type}")
-        text_message = call.message.text
-
-        name_entered_button = ''
-
-        dict_button = call.message.json.get('reply_markup', {}).get('inline_keyboard', [])
-        # print(dict_button)
-        for list_buttons in dict_button:
-            # print(list_buttons)
-            for buttons in list_buttons:
-                # print(buttons)
-                name_button = buttons.get('text')
-                callback = buttons.get('callback_data')
-                if entered_type in callback:
-                    logger.debug(f"Entered type ({entered_type}) matched in callback ({callback})")
-                    name_entered_button = name_button
-
-        # Создаем словарь с данными
-        response_data = {
-            "event_id": event_id,
-            "entered_type": name_entered_button
-        }
-
-        result = f'{text_message}\n{name_entered_button}'
-        answer_erp = post_answer_of_event(response_data)
-        logger.debug(f"ERP response received: {answer_erp}")
-        # Если отправка response_data в 1С успешна, то выполнить следующий шаг
-        if answer_erp is True:
-            bot.edit_message_text(chat_id=user_id, message_id=call.message.message_id, text=result)
-            return
-        # Иначе выполнить:
+        # Маршрутизация callback-ов
+        if call.data.startswith(calendar_callback.prefix):
+            handle_calendar_callback(bot, call, calendar, calendar_callback)
+        elif call.data.startswith("name_"):
+            handle_name_callback(bot, call)
+        elif call.data == "CANCEL":
+            handle_cancel_callback(bot, call)
+        elif call.data.startswith("event_"):
+            handle_event_callback(bot, call)
         else:
-            bot.answer_callback_query(call.id, "Ошибка: не удалось отправить данные в 1С. Попробуйте позже.")
-            return
+            handle_menu_callback(bot, call, call.data)
 
-    ###
-
-    # Если меню нет вернёт ошибку
-    if not menu:
-        bot.answer_callback_query(call.id, "Ошибка: меню не найдено.")
-        return
-
-    # Если это подменю с функцией
-    if "function" in menu:
-        try:
-            # Счётчик выполнения функций для сбора статистики
-            StatisticsManager().collect_statistical_func(name_func=menu_key)
-            result = menu["function"](call)
-        except Exception as error:
-            logger.exception(f"Error executing menu function {menu_key}: {error}")
-            bot.send_message(user_id, "Произошла ошибка при выполнении команды. Попробуйте снова.")
-            return
-        if isinstance(result, dict):
-            text = result.get('text')
-            keyboard = result.get('keyboard')
-            bot.send_message(user_id, text=text, reply_markup=keyboard)
-        else:
-            bot.send_message(user_id, result)
-    # Если это переход на другое меню
-    elif "redirect" in menu:
-        user_access_level = WorkWithDb().check_access_level_user(user_id=user_id)
-        new_menu_key = menu["redirect"]
-        markup = menu_form.create_markup(new_menu_key, user_access_level)
-        if markup:
-            bot.edit_message_text(
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                text=menu_form.menu_storage[new_menu_key]["text"],
-                reply_markup=markup
-            )
-    # Если это обычное меню
-    elif "buttons" in menu:
-        user_access_level = WorkWithDb().check_access_level_user(user_id=user_id)
-        markup = menu_form.create_markup(menu_key, user_access_level)
-        if markup:
-            bot.edit_message_text(
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                text=menu["text"],
-                reply_markup=markup
-            )
+    except Exception as error:
+        logger.error(f"Callback error: {error}", exc_info=True)
+        bot.answer_callback_query(call.id, "⚠️ Произошла ошибка. Попробуйте позже.")
 
 
 def job_every_month(func):

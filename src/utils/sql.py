@@ -228,11 +228,12 @@ class WorkWithDb:
 
         self.create_table_if_not('duty_schedule')
 
-        select_query = (f"SELECT * "
-                        f"FROM duty_schedule "
-                        f"WHERE first_date >= DATE('now') "
-                        f"ORDER BY ABS(JULIANDAY(first_date) - JULIANDAY('now'))"
-                        f"LIMIT 1")
+        select_query = (
+            "SELECT * "
+            "FROM duty_schedule "
+            "WHERE last_date >= DATE('now') "
+            "ORDER BY ABS(JULIANDAY(last_date) - JULIANDAY('now'))"
+            "LIMIT 1")
         with self.sqlite_connection as conn:
             cursor = conn.execute(select_query)
             # Проверяем, есть ли результат
