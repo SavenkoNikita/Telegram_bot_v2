@@ -2,7 +2,7 @@ from telebot import types
 import logging
 
 from src.utils import functions
-from src.utils.functions import change_status_news
+from src.utils.functions import change_status_news, create_notification
 
 logger = logging.getLogger(__name__)
 
@@ -192,31 +192,31 @@ menu_storage = {  # Хранилище меню, подменю и функци�
         }
     },
 
-    "button_create_notif": {
-        "text": "Создать уведомление",
-        "buttons": {
-            "button1": {
-                "name": "Для всех",
-                "access_level": "admin",
-                "callback": "button_notif_all"},
-            "button2": {
-                "name": "Для подписчиков IT-отдела",
-                "access_level": "admin",
-                "callback": "button_notif_it"},
-            "button3": {
-                "name": "Для барахолки",
-                "access_level": "admin",
-                "callback": "button_notif_bar"},
-            "button4": {
-                "name": "🔙 Основные функции",
-                "access_level": "all",
-                "callback": "button_main_functions"},
-            "button5": {
-                "name": "🏠 Главное меню",
-                "access_level": "all",
-                "callback": "main_menu"}
-        }
-    },
+    # "button_create_notif": {
+    #     "text": "Создать уведомление",
+    #     "buttons": {
+    #         "button1": {
+    #             "name": "Для всех",
+    #             "access_level": "admin",
+    #             "callback": "button_notif_all"},
+    #         "button2": {
+    #             "name": "Для подписчиков IT-отдела",
+    #             "access_level": "admin",
+    #             "callback": "button_notif_it"},
+    #         "button3": {
+    #             "name": "Для барахолки",
+    #             "access_level": "admin",
+    #             "callback": "button_notif_bar"},
+    #         "button4": {
+    #             "name": "🔙 Основные функции",
+    #             "access_level": "all",
+    #             "callback": "button_main_functions"},
+    #         "button5": {
+    #             "name": "🏠 Главное меню",
+    #             "access_level": "all",
+    #             "callback": "main_menu"}
+    #     }
+    # },
 
     "button_dej_1": {"function": functions.dej_name},
     "button_dej_2": {"function": functions.list_dej},
@@ -238,9 +238,9 @@ menu_storage = {  # Хранилище меню, подменю и функци�
     "button_create_lot": {"function": building_func},
     "button_urgent_message": {"function": building_func},
     "button_sub_bar": {"function": building_func},
-    "button_notif_all": {"function": building_func},
-    "button_notif_it": {"function": building_func},
-    "button_notif_bar": {"function": building_func},
+    "button_create_notif": {"function": create_notification},
+    # "button_notif_it": {"function": create_notification},
+    # "button_notif_bar": {"function": create_notification},
     "button_upd_dej": {"function": building_func}
 }
 

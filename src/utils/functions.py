@@ -18,7 +18,12 @@ from src.utils.sql import WorkWithDb, StatisticsManager
 
 # Инициализация бота
 dotenv.load_dotenv()
-bot = telebot.TeleBot(os.getenv('BOT_TOKEN'))
+
+bot_token = os.getenv('BOT_TOKEN')
+if not bot_token:
+    raise ValueError("BOT_TOKEN is missing in environment variables")
+bot = telebot.TeleBot(bot_token)
+
 id_dev = os.getenv('DEV_ID')
 
 # Настройка логгера
@@ -205,6 +210,7 @@ def show_calendar(chat_id=None, title=None, select_range=False):
             )
         )
 
+
 def ask_for_name(chat_id):
     """Отправляет пользователю сообщение с inline клавиатурой для выбора имени вносимого в таблицу в БД дежурного."""
 
@@ -239,12 +245,14 @@ def finalize_event(chat_id, user_id):
     else:
         bot.send_message(chat_id, answer_db)
 
+
 def create_event(call):
     """Заполняет шапку календаря, формирует клавиатуру и возвращает результат"""
 
     text_title = 'Выберите дату события:'
     created_calendar = show_calendar(chat_id=None, title=text_title)
     return created_calendar
+
 
 def change_status_news(call):
     """Меняет статус подписки на новости у пользователя"""
@@ -334,7 +342,7 @@ def schedule_next_run():
     logger.info(f'{datetime.now().strftime("%d.%m.%Y %H:%M:%S")} Updating task schedules:')
 
     list_func = [
-        {'first summary': [notif_of_hero]},
+        {'first summary': [notif_of_hero, check_and_send_scheduled_notifications]},
         # {'second summary': []},
         {'daily summary': [notification_of_dej_tomorrow]}
     ]
@@ -549,12 +557,6 @@ def create_top_chart_func():
     logger.info("Exiting method: create_top_chart_func")
 
 
-def create_event():
-    """Создаёт запись в таблице event"""
-
-    pass
-
-
 def decline_name(name: str) -> tuple:
     """
     Склоняет мужское имя для подстановки в предложения.
@@ -603,6 +605,7 @@ def decline_name(name: str) -> tuple:
             name + 'е'
         )
 
+
 def generate_messages(name: str) -> list:
     """
     Генерирует список персонализированных сообщений с правильно склонённым именем
@@ -637,12 +640,14 @@ def generate_messages(name: str) -> list:
 
     return rand_message
 
+
 def who_is_responsible():
     """Возвращает случайную фразу с именем того, кто разбирает сигналы на этой неделе."""
 
     name_hero = WorkWithDb().get_data_next_dej()[2]
     message = generate_messages(name_hero)
     return message
+
 
 def notif_of_hero():
     """Если понедельник - уведомляет подписчиков на новости IT о том кто на неделе выполняет сигналы."""
@@ -653,3 +658,87 @@ def notif_of_hero():
     if today == 0:  # 0 соответствует понедельнику
         text_message = who_is_responsible()
         notification_for_subscribers(text_message)
+
+
+def create_notification(call):
+    """Инициирует процесс создания уведомления"""
+    user_id = call.from_user.id
+    user_data[user_id] = {'notification_mode': True}
+
+    text_title = 'Выберите дату уведомления:'
+    created_calendar = show_calendar(chat_id=None, title=text_title)
+    return created_calendar
+
+
+def ask_for_notification_text(chat_id, selected_date):
+    """Запрашивает текст уведомления"""
+    bot.send_message(
+        chat_id,
+        f"Выбрана дата: {selected_date.strftime('%d.%m.%Y')}\n\n"
+        "Введите текст уведомления:"
+    )
+    user_data[chat_id]['selected_date'] = selected_date
+    user_data[chat_id]['waiting_for_text'] = True
+
+
+def save_notification_to_db(chat_id, text):
+    """Сохраняет уведомление в БД"""
+    if chat_id not in user_data or 'selected_date' not in user_data[chat_id]:
+        bot.send_message(chat_id, "Ошибка: данные уведомления не найдены. Пожалуйста, начните заново.")
+        return False
+
+    selected_date = user_data[chat_id]['selected_date']
+    formatted_date = selected_date.strftime('%Y-%m-%d')
+    full_text = f"••• Уведомление •••\n\n{text}"
+
+    try:
+        db = WorkWithDb()
+        db.create_table_if_not('events')
+        insert_query = (
+            'INSERT INTO events ("date", "text_event") '
+            'VALUES (?, ?)'
+        )
+        with db.sqlite_connection:
+            db.sqlite_connection.execute(insert_query, (formatted_date, full_text))
+
+        bot.send_message(chat_id, "Уведомление успешно сохранено!")
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка при сохранении уведомления: {e}")
+        bot.send_message(chat_id, "Произошла ошибка при сохранении уведомления.")
+        return False
+    finally:
+        if chat_id in user_data:
+            del user_data[chat_id]
+
+
+def check_and_send_scheduled_notifications():
+    """Проверяет запланированные уведомления и рассылает их"""
+    try:
+        db = WorkWithDb()
+        if not db.check_table_exists('events'):
+            return
+
+        today = datetime.now().strftime('%Y-%m-%d')
+
+        with db.sqlite_connection:
+            cursor = db.sqlite_connection.cursor()
+            cursor.execute(
+                'SELECT text_event FROM events WHERE date = ?',
+                (today,)
+            )
+            events = cursor.fetchall()
+
+            if events:
+                for event in events:
+                    notification_text = event[0]
+                    notification_for_all_user(notification_text)
+
+                    # Удаляем отправленное уведомление
+                    cursor.execute(
+                        'DELETE FROM events WHERE date = ? AND text_event = ?',
+                        (today, notification_text)
+                    )
+
+    except Exception as e:
+        logger.error(f"Ошибка при проверке запланированных уведомлений: {e}")

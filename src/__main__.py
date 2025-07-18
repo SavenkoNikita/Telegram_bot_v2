@@ -6,6 +6,7 @@ import logging
 import os
 import threading
 import time
+
 import dotenv
 import requests
 import schedule
@@ -27,16 +28,20 @@ from src.utils.functions import (
     unknown_user,
     schedule_next_run,
     update_data_door,
-    create_top_chart_func)
+    create_top_chart_func, user_data, save_notification_to_db)
 from src.utils.logger_setup import setup_logger
-from src.utils.sql import StatisticsManager
+from src.utils.sql import StatisticsManager, WorkWithDb
 from src.utils.tracking_sensors import TrackingSensor
+# from src.utils.functions import bot as functions_bot
 
 dotenv.load_dotenv()
+
 bot_token = os.getenv('BOT_TOKEN')
 if not bot_token:
     raise ValueError("BOT_TOKEN is missing in environment variables")
 bot = telebot.TeleBot(bot_token)
+# functions_bot = bot  # Передаем экземпляр бота в модуль functions
+
 dev_id = os.getenv('DEV_ID')
 
 # Инициализация календаря
@@ -84,6 +89,19 @@ def command_handler(message):
 
 @bot.message_handler(content_types=['text'])
 def talk(message):
+    user_id = message.from_user.id
+
+    # Проверяем, ожидаем ли мы текст уведомления
+    if user_id in user_data and user_data[user_id].get('waiting_for_text', False):
+        text = message.text
+        if save_notification_to_db(message.chat.id, text):
+            # После успешного сохранения возвращаем в главное меню
+            data_menu = process_menu_command(user_id)
+            title_menu = data_menu[0]
+            menu = data_menu[1]
+            bot.send_message(chat_id=user_id, text=title_menu, reply_markup=menu)
+        return
+
     text_answer = 'Я пока не умею реагировать на текст. Доступные функции в /menu'
     bot.reply_to(message, text_answer)
 
@@ -131,6 +149,8 @@ schedule.every().day.at('00:00').do(schedule_next_run)
 schedule.every().day.at('00:00').do(create_top_chart_func)
 schedule.every().day.at('00:00').do(StatisticsManager().reset_func_stat_day)
 schedule.every().day.at('00:00').do(job_every_month, StatisticsManager().reset_func_stat_month)
+# Добавляем очистку старых событий раз в неделю
+schedule.every().monday.at('00:30').do(lambda: WorkWithDb().clean_old_events(30))
 
 # schedule.every().minute.do(update_data_door)
 schedule.every(10).seconds.do(update_data_door)
@@ -181,16 +201,16 @@ while True:
         time.sleep(5)
     except Exception as e:
         frm = inspect.trace()[-1]
-        unique_error_id = f"Error_{int(time.time())}"  # Generate a unique ID for the error
+        unique_error_id = f"Error_{int(time.time())}"
         logger.error(f"Непредвиденная ошибка [{unique_error_id}] - {e}", exc_info=e)
         error_details = (
-            f"⛔️ *Критическая ошибка обнаружена!* ⛔️\n\n"
-            f"*Дата и время:* {datetime.datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n"
-            f"*Уникальный ID ошибки:* {unique_error_id}\n"
-            f"*Файл:* {frm.filename}\n"
-            f"*Строка:* {frm.lineno}\n"
-            f"*Ошибка:* `{e}`"
+            f"⛔️ Критическая ошибка обнаружена!\n\n"
+            f"Дата и время: {datetime.datetime.now().strftime('%d.%m.%Y %H:%M:%S')}\n"
+            f"Уникальный ID ошибки: {unique_error_id}\n"
+            f"Файл: {frm.filename}\n"
+            f"Строка: {frm.lineno}\n"
+            f"Ошибка: {str(e)}"
         )
-        bot.send_message(chat_id=dev_id, text=error_details, parse_mode="Markdown")
+        bot.send_message(chat_id=dev_id, text=error_details)  # Убрали parse_mode="Markdown"
         logger.debug(f"Сообщение об ошибке отправлено разработчику (DEV_ID: {dev_id}).")
         time.sleep(5)

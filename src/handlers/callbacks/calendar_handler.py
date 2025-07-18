@@ -1,6 +1,6 @@
 import datetime
 
-from src.utils.functions import show_calendar, ask_for_name, user_data
+from src.utils.functions import show_calendar, ask_for_name, user_data, ask_for_notification_text
 
 
 def handle_calendar_callback(bot, call, calendar, calendar_callback):
@@ -14,6 +14,12 @@ def handle_calendar_callback(bot, call, calendar, calendar_callback):
             user_data[user_id] = {'calendar_mode': 'range'}
 
         calendar_mode = user_data[user_id].get('calendar_mode', 'range')
+        notification_mode = user_data[user_id].get('notification_mode', False)
+
+        if notification_mode:
+            user_data[user_id]["selected_date"] = date
+            ask_for_notification_text(call.message.chat.id, date)
+            return
 
         if calendar_mode == 'range':
             if date < datetime.datetime.now().date():

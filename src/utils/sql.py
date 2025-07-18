@@ -588,6 +588,19 @@ class WorkWithDb:
                 print(f"Неожиданная ошибка при обработке датчика {name_sensor}: {str(e)}")
                 conn.rollback()
 
+    def clean_old_events(self, days=30):
+        """Удаляет уведомления старше указанного количества дней"""
+        try:
+            cutoff_date = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime('%Y-%m-%d')
+            with self.sqlite_connection:
+                self.sqlite_connection.execute(
+                    'DELETE FROM events WHERE date < ?',
+                    (cutoff_date,)
+                )
+            self.logger.info(f"Cleaned events older than {days} days")
+        except Exception as e:
+            self.logger.error(f"Error cleaning old events: {e}")
+
 
 class StatisticsManager:
     """Класс для работы со статистикой пользователей и функций"""
