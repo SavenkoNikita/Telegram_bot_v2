@@ -157,9 +157,9 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "access_level": "admin",
                 "callback": "button_ins_dej"},
             "button3": {
-                "name": "Внести изменения",
+                "name": "🔄 Поменяться дежурством",
                 "access_level": "admin",
-                "callback": "button_upd_dej"},
+                "callback": "button_swap_dej"},
             "button4": {
                 "name": "🔙 Основные функции",
                 "access_level": "all",
@@ -241,7 +241,7 @@ menu_storage = {  # Хранилище меню, подменю и функци�
     "button_create_notif": {"function": create_notification},
     # "button_notif_it": {"function": create_notification},
     # "button_notif_bar": {"function": create_notification},
-    "button_upd_dej": {"function": building_func}
+    "button_swap_dej": {"function": functions.swap_dej}
 }
 
 new_menu_storage = {

@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import os
 import sqlite3
@@ -41,7 +42,8 @@ class WorkWithDb:
                                     '"all_time" INTEGER DEFAULT 0'],
             'duty_schedule': ['"first_date" TEXT NOT NULL UNIQUE',
                               '"last_date" TEXT NOT NULL UNIQUE',
-                              '"user_first_name" TEXT NOT NULL'],
+                              '"user_first_name" TEXT NOT NULL',
+                              '"user_id" INTEGER NOT NULL'],
             'events': ['"date" TEXT NOT NULL',
                        '"text_event" TEXT NOT NULL'],
             'in_out': ['"last_checkpoint" TEXT', ],
@@ -206,22 +208,25 @@ class WorkWithDb:
 
     def insert_dej_in_table(self, first_date, last_date, name_hero):
         """Добавляет дежурного в таблицу duty_schedule."""
-
         try:
             self.create_table_if_not('duty_schedule')
 
+            # Получаем user_id по имени
+            user_id = self.get_user_id_by_name(name_hero)
+            if not user_id:
+                raise ValueError(f"Пользователь {name_hero} не найден")
+
             insert_query = (
-                'INSERT INTO duty_schedule ("first_date", "last_date", "user_first_name") '
-                'VALUES (?, ?, ?)'
+                'INSERT INTO duty_schedule ("first_date", "last_date", "user_first_name", "user_id") '
+                'VALUES (?, ?, ?, ?)'
             )
+
             with self.sqlite_connection as conn:
-                conn.execute(insert_query, (first_date, last_date, name_hero))
-            self.logger.info(f"Запись о дежурном добавлена: {first_date}, {last_date}, {name_hero}.")
+                conn.execute(insert_query, (first_date, last_date, name_hero, user_id))
             return True
         except sqlite3.IntegrityError as e:
             self.logger.error(f"Integrity error while inserting duty schedule: {e}")
-        text_error = "Ошибка: начальная или конечная дата уже существует в таблице."
-        return text_error
+            return "Ошибка: начальная или конечная дата уже существует в таблице."
 
     def get_data_next_dej(self):
         """Возвращает данные следующего дежурного."""
@@ -600,6 +605,106 @@ class WorkWithDb:
             self.logger.info(f"Cleaned events older than {days} days")
         except Exception as e:
             self.logger.error(f"Error cleaning old events: {e}")
+
+    def get_future_dej_list(self, exclude_user_id=None):
+        """Возвращает 7 ближайших будущих дежурств, исключая дежурства указанного пользователя"""
+        self.create_table_if_not('duty_schedule')
+
+        query = """
+            SELECT d.id, d.first_date, d.last_date, u.user_first_name, u.user_id 
+            FROM duty_schedule d 
+            JOIN users u ON d.user_id = u.user_id 
+            WHERE d.last_date >= DATE('now')
+            AND d.user_id != ? 
+            ORDER BY d.first_date
+            LIMIT 7
+        """
+
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(query, (exclude_user_id,))
+            return cursor.fetchall()
+
+    def get_dej_by_id(self, dej_id):
+        """Возвращает дежурство по ID"""
+        self.create_table_if_not('duty_schedule')
+
+        select_query = (
+            "SELECT d.id, d.first_date, d.last_date, u.user_first_name, u.user_id "
+            "FROM duty_schedule d "
+            "JOIN users u ON d.user_first_name = u.user_first_name "
+            "WHERE d.id = ?"
+        )
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query, (dej_id,))
+            return cursor.fetchone()
+
+    def get_user_next_dej(self, user_id):
+        """Возвращает следующее дежурство пользователя"""
+        self.create_table_if_not('duty_schedule')
+
+        # Сначала получаем имя пользователя
+        user_name = self.get_user_name(user_id)
+        if not user_name:
+            return None
+
+        select_query = (
+            "SELECT id, first_date, last_date, user_first_name "
+            "FROM duty_schedule "
+            "WHERE user_first_name = ? AND last_date >= DATE('now') "
+            "ORDER BY first_date "
+            "LIMIT 1"
+        )
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query, (user_name,))
+            result = cursor.fetchone()
+
+            # Проверяем, что дежурство найдено
+            if result and result[1] and result[2]:
+                return result
+            return None
+
+    def get_user_name(self, user_id):
+        """Возвращает имя пользователя по ID"""
+        select_query = "SELECT user_first_name FROM users WHERE user_id = ?"
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query, (user_id,))
+            result = cursor.fetchone()
+            return result[0] if result else None
+
+    def swap_dej_dates(self, dej_id1, dej_id2):
+        """Меняет даты дежурств местами"""
+        try:
+            # Получаем оба дежурства
+            dej1 = self.get_dej_by_id(dej_id1)
+            dej2 = self.get_dej_by_id(dej_id2)
+
+            if not dej1 or not dej2:
+                return False
+
+            # Меняем даты местами
+            update_query = (
+                "UPDATE duty_schedule "
+                "SET first_date = ?, last_date = ? "
+                "WHERE id = ?"
+            )
+            with self.sqlite_connection as conn:
+                # Обновляем первое дежурство
+                conn.execute(update_query, (dej2[1], dej2[2], dej_id1))
+                # Обновляем второе дежурство
+                conn.execute(update_query, (dej1[1], dej1[2], dej_id2))
+                conn.commit()
+            return True
+        except Exception as e:
+            self.logger.error(f"Ошибка при обмене дежурствами: {e}")
+            return False
+
+    def get_user_id_by_name(self, name):
+        """Возвращает user_id по имени пользователя"""
+        select_query = "SELECT user_id FROM users WHERE user_first_name = ?"
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(select_query, (name,))
+            result = cursor.fetchone()
+            return result[0] if result else None
 
 
 class StatisticsManager:

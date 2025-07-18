@@ -10,6 +10,23 @@ def handle_menu_callback(bot, call, menu_key):
     menu = menu_form.menu_storage.get(menu_key)
 
     if not menu:
+        # Проверяем новые callback'ы для обмена дежурствами
+        if call.data.startswith("swap_dej_"):
+            from .swap_dej_handler import handle_confirm_swap_dej
+            dej_id = call.data.split("_")[2]
+            handle_confirm_swap_dej(bot, call, dej_id)
+            return
+        elif call.data.startswith("confirm_swap_"):
+            from .swap_dej_handler import process_swap_confirmation
+            from_user_id = int(call.data.split("_")[2])
+            process_swap_confirmation(bot, call, from_user_id, True)
+            return
+        elif call.data.startswith("reject_swap_"):
+            from .swap_dej_handler import process_swap_confirmation
+            from_user_id = int(call.data.split("_")[2])
+            process_swap_confirmation(bot, call, from_user_id, False)
+            return
+
         bot.answer_callback_query(call.id, "Ошибка: меню не найдено.")
         return
 

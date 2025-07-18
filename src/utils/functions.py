@@ -742,3 +742,10 @@ def check_and_send_scheduled_notifications():
 
     except Exception as e:
         logger.error(f"Ошибка при проверке запланированных уведомлений: {e}")
+
+
+def swap_dej(call):
+    """Обработчик для кнопки обмена дежурствами"""
+    from src.handlers.callbacks.swap_dej_handler import handle_swap_dej_callback
+    handle_swap_dej_callback(bot, call)
+    return "Выберите дежурство для обмена:"
