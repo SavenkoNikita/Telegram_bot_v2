@@ -1,4 +1,7 @@
 from src.utils.functions import user_data
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def handle_cancel_callback(bot, call):
@@ -10,4 +13,9 @@ def handle_cancel_callback(bot, call):
 
 
 def handle_delete_callback(bot, call):
-    bot.delete_message(call.message.chat.id, call.message.message_id)
+    try:
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+        bot.answer_callback_query(call.id)  # Добавляем подтверждение обработки
+    except Exception as e:
+        logger.error(f"Error deleting message: {e}")
+        bot.answer_callback_query(call.id, "Не удалось удалить сообщение")

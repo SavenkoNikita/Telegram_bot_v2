@@ -384,7 +384,7 @@ def create_markup(menu_key, user_access_level):
             url = values['url']
             if user_access_level == 'admin':
                 markup.add(types.InlineKeyboardButton(text=name_button, url=url))
-            elif user_access_level == 'all':
+            elif user_access_level == 'user':
                 markup.add(types.InlineKeyboardButton(text=name_button, url=url))
 
     return markup

@@ -22,7 +22,7 @@ from src.handlers import (
     handle_event_callback,
     handle_name_callback,
     handle_cancel_callback,
-    handle_menu_callback
+    handle_menu_callback, handle_delete_callback
 )
 from src.utils.functions import (
     unknown_user,
@@ -111,19 +111,25 @@ def talk(message):
 def callback_dispatcher(call):
     """Центральный диспетчер callback-запросов"""
     try:
-        if not call.from_user or not call.from_user.id:
-            raise ValueError("Не удалось определить пользователя")
+        # Логируем входящий callback
+        logger.debug(f"Processing callback: {call.data} from user {call.from_user.id}")
+
+        # Обработка CANCEL и DELETE в первую очередь
+        if call.data == "CANCEL":
+            handle_cancel_callback(bot, call)
+            return
+        elif call.data == "DELETE":
+            handle_delete_callback(bot, call)
+            return
 
         # Статистика активности
         StatisticsManager().collect_statistical_user(user_id=call.from_user.id)
 
-        # Маршрутизация callback-ов
+        # Маршрутизация остальных callback'ов
         if call.data.startswith(calendar_callback.prefix):
             handle_calendar_callback(bot, call, calendar, calendar_callback)
         elif call.data.startswith("name_"):
             handle_name_callback(bot, call)
-        elif call.data == "CANCEL":
-            handle_cancel_callback(bot, call)
         elif call.data.startswith("event_"):
             handle_event_callback(bot, call)
         else:
