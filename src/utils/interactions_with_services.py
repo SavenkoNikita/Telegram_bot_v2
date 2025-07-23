@@ -9,14 +9,43 @@ import json
 
 from typing import Optional, Dict
 
+# from samba.dcerpc.dcerpc import response
+
+# from src.utils.functions import decline_word
+
 dotenv.load_dotenv()
 dev_id = os.getenv('DEV_ID')
+
+
+def decline_word(number, word_forms):
+    """
+    Функция для склонения слова в зависимости от числа.
+
+    :param number: int, число
+    :param word_forms: tuple или list, формы слова в порядке:
+                       (форма для 1, форма для 2-4, форма для 5-20 и т.д.)
+    :return: str, правильная форма слова
+    """
+
+    logging.debug(f"Declining word for number: {number}, word forms: {word_forms}")
+    if not isinstance(word_forms, (tuple, list)) or len(word_forms) != 3:
+        raise ValueError("word_forms должен быть кортежем или списком из 3 элементов")
+
+    remainder_10 = number % 10
+    remainder_100 = number % 100
+
+    if remainder_10 == 1 and remainder_100 != 11:
+        return word_forms[0]
+    elif 2 <= remainder_10 <= 4 and not (12 <= remainder_100 <= 14):
+        return word_forms[1]
+    else:
+        return word_forms[2]
 
 
 class ExchangeWithErp:
     """Получение данных из 1С"""
 
-    def __init__(self, params):
+    def __init__(self):
         self.logger = logging.getLogger("ERP_Exchange_Logger")
         self.logger.setLevel(logging.INFO)
         self.logger.handlers.clear()  # Clear existing logging handlers to avoid duplicate logs
@@ -25,87 +54,34 @@ class ExchangeWithErp:
         self.login = os.getenv("LOGIN_ERP")
         self.password = os.getenv("PASS_ERP")
         self.user_agent_val = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        self.params = params
-        self.response = self.get_request()
 
-    def get_request(self):
+    def get_request(self, params):
         """Выполняет GET-запрос к системе 1С."""
-        self.logger.info(f"Отправка GET-запроса: {self.request_get}, параметры: {self.params}")
+        self.logger.info(f"Отправка GET-запроса: {self.request_get}, параметры: {params}")
         try:
             request = requests.get(
                 url=self.request_get,
                 headers={'User-Agent': self.user_agent_val},
                 auth=HTTPBasicAuth(self.login, self.password),
-                params=self.params,
+                params=params,
                 timeout=10
             )
-            self.logger.info(f"Получен ответ со статусом: {request.status_code}")
-            # print(request)
+            # self.logger.error(f'{__name__}.{self.get_request.__name__}({params}):\n'
+            #                   f'ответ: {request.json()}\n'
+            #                   f'статус код: {request.status_code}\n')
             return request
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Ошибка GET-запроса: {str(e)}")
             return None
 
-    def answer_from_ERP(self):
-        """Обрабатывает ответ от 1С (ERP) и возвращает данные или ошибку."""
-        try:
-            self.logger.info(f"Разбор ответа от ERP: {self.response.json()}")
-            data = self.response.json()
-            for key, value in data.items():
-                if os.getenv('EVENT_HANDLING_KEY') in key:
-                    return True
-                elif os.getenv('BIRD_AUTH_KEY') in key:
-                    return value
-            return {'error_text': 'Неизвестный ответ от ERP'}
-        except Exception as e:
-            self.logger.error(f"Ошибка обработки ответа: {str(e)}")
-            return {'error_text': 'Ошибка обработки ответа'}
-
-    def get_count_days(self):
-        """На вход принимает user_id, запрашивает данные из 1С, и возвращает кол-во накопленных дней отпуска.
-        Если пользователь не уволен, функция вернёт число, во всех остальных случаях 1С вернёт ошибку"""
-
-        self.logger.info("Processing get_count_days response from ERP")
-        json_data = self.response.json()
-        count_day = int(json_data.get(os.getenv("FUNC_NAME2"), 0))
-        self.logger.info(f"Count of days calculated: {count_day}")
-        return count_day
-
-    def verification(self):
-        """Запрос принимает user_id и ИНН пользователя. В случае успеха, обновляет ID Telegram в 1С у пользователя с
-        указанным ИНН. Либо возвращает str(ошибку)."""
-
-        self.logger.info("Processing verification response from ERP")
-        json = self.response.json()
-        answer_erp = json.get(os.getenv("FUNC_NAME3"), "Error: Missing data")
-        self.logger.info(f"Verification result: {answer_erp}")
-        return answer_erp
-
-    def in_out(self):
-        """Обрабатывает вход и выход пользователя из системы ERP.
-
-        :return dict(in_out)"""
-
-        try:
-            data = self.response.json()
-            self.logger.debug(f"Ответ JSON in_out: {data}")
-            if self.response.status_code == 200:
-                for key, value in data.items():
-                    # print(data.items())
-                    return value
-            return {'error_text': 'Некорректный ответ'}
-        except Exception as e:
-            self.logger.error(f"Ошибка обработки in_out: {str(e)}")
-            return {'error_text': 'Ошибка обработки in_out'}
-
-    def post_request(self):
+    def post_request(self, params):
         """Выполняет POST-запрос в систему ERP."""
-        self.logger.info(f"Отправка POST-запроса: {self.request_post}, параметры: {self.params}")
+        self.logger.info(f"Отправка POST-запроса: {self.request_post}, параметры: {params}")
         try:
             request = requests.post(
                 url=self.request_post,
                 headers={'User-Agent': self.user_agent_val},
-                params=self.params,
+                params=params,
                 auth=HTTPBasicAuth(self.login, self.password),
                 timeout=10
             )
@@ -114,6 +90,96 @@ class ExchangeWithErp:
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Ошибка POST-запроса: {str(e)}")
             return None
+
+    def answer_from_ERP(self, params):
+        """Обрабатывает ответ от 1С (ERP) и возвращает данные или ошибку."""
+        try:
+            response = self.get_request(params)
+            data = response.json()
+            if response.ok:
+                for key, value in data.items():
+                    value_answer = data.get(key)
+                    return value_answer
+            elif response.status_code == 400:
+                for key, value in data.items():
+                    if 'textError' in key:
+                        return value
+                    else:
+                        return data.get('textError')
+            elif response.status_code == 500:
+                update_text = f'Не удалось выполнить запрос, возникла ошибка. Сервер 1С недоступен. ' \
+                              f'Производится обновление. Повторите попытку позже. ' \
+                              f'Status_code: {response.status_code}'
+                return update_text
+            else:
+                return {'error_text': 'Неизвестный ответ от ERP'}
+        except Exception:
+            # self.logger.error(f"Ошибка обработки ответа: {str(e)}")
+            return {'error_text': 'Ошибка обработки ответа'}
+
+    def get_count_days(self, user_id):
+        """На вход принимает user_id, запрашивает данные из 1С, и возвращает кол-во накопленных дней отпуска.
+        Если пользователь не уволен, функция вернёт число, во всех остальных случаях 1С вернёт ошибку"""
+
+        params = {os.getenv('NUMBER'): user_id}
+        try:
+            self.logger.info("Processing get_count_days response from ERP")
+            if self.get_request(params).ok:
+                count_day = self.answer_from_ERP(params)
+                decline = decline_word(count_day, ('день', 'дня', 'дней'))
+                message_text = f'На данный момент у вас накоплено ||{count_day} {decline}|| отпуска'
+                return message_text
+            else:
+                error_answer = self.answer_from_ERP(params)
+                error_text = f'При выполнении запроса возникла ошибка "{error_answer}"'
+                self.logger.error(f'{__name__}.{self.get_count_days.__name__}: {error_text}')
+                return error_text
+        except Exception as error:
+            self.logger.error(error)
+
+    def verification(self, user_id, user_inn):
+        """Запрос принимает user_id и ИНН пользователя. В случае успеха, обновляет ID Telegram в 1С у пользователя с
+        указанным ИНН. Либо возвращает str(ошибку)."""
+
+        params = {os.getenv('NUMBER'): user_id, os.getenv('VERIFICATION'): user_inn}
+        try:
+            self.logger.info("Processing get_count_days response from ERP")
+            if self.get_request(params).ok:
+                result = self.answer_from_ERP(params)
+                return result
+            else:
+                error_answer = self.answer_from_ERP(params)
+                error_text = f'При выполнении запроса возникла ошибка {error_answer}'
+                return error_text
+        except Exception as error:
+            self.logger.error(error)
+
+    def in_out(self):
+        """Обрабатывает вход и выход пользователя из системы ERP.
+
+        :return dict(in_out)"""
+
+        params = {os.getenv('BIRD_AUTH_KEY'): os.getenv('BIRD_AUTH_VALUE')}
+        try:
+            data = self.answer_from_ERP(params)
+            # status_sql = WorkWithDb().check_door()[0]
+
+            self.logger.debug(f"Ответ JSON in_out: {data}")
+            if self.get_request(params).ok:
+                if isinstance(data, list):
+                    last_point = data[-1]
+                    string_last_point = str(f'{last_point.get("Время")} {last_point.get("Вход")}')
+                    return string_last_point
+                    # if status_sql != string_last_point:
+                    #     WorkWithDb().update_checkpoint(string_last_point)
+                    #     notif_bird(string_last_point)
+            return {'error_text': 'Некорректный ответ'}
+        except Exception as e:
+            self.logger.error(f"Ошибка обработки in_out: {str(e)}")
+            return {'error_text': 'Ошибка обработки in_out'}
+
+    def event_handling(self):
+        pass
 
 
 class WorkWithYouGile:

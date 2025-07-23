@@ -3,7 +3,6 @@ import src.utils.menu_formation as menu_form
 from src.utils.sql import WorkWithDb, StatisticsManager
 
 logger = logging.getLogger(__name__)
-# processed_callbacks = set()
 
 
 def handle_menu_callback(bot, call, menu_key):

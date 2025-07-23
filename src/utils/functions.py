@@ -12,7 +12,7 @@ from requests.auth import HTTPBasicAuth
 from telebot import types
 from telebot_calendar import Calendar, CallbackData
 
-from src.utils.interactions_with_services import ExchangeWithErp
+from src.utils.interactions_with_services import ExchangeWithErp as ERP
 from src.utils.logger_setup import setup_logger
 from src.utils.sql import WorkWithDb, StatisticsManager
 
@@ -267,7 +267,7 @@ def post_answer_of_event(dict_answer):
     key_auth = os.getenv("EVENT_HANDLING_KEY")
     value_auth = os.getenv("EVENT_HANDLING_VALUE")
     dict_answer[key_auth] = value_auth
-    answer_ERP = ExchangeWithErp(dict_answer).answer_from_ERP()
+    answer_ERP = ExchangeWithErp().answer_from_ERP(dict_answer)
     logger.debug(f"ERP answer: {answer_ERP}")
     return answer_ERP
 
@@ -388,71 +388,76 @@ def get_app_remit_employee(call):
         logger.error(f"Failed to download the file: {e}")
 
 
-def update_data_door():
-    """Актуализирует данные в БД о последней двери"""
+# def update_data_door():
+#     """Актуализирует данные в БД о последней двери"""
+#
+#     # name = os.getenv('BIRD_AUTH_KEY')
+#     # value = os.getenv('BIRD_AUTH_VALUE')
+#
+#     # status_sql = WorkWithDb().check_door()[0]
+#     # answer_erp = ExchangeWithErp().in_out({name: value})
+#     # print(status_sql)
+#     # print(answer_erp)
+#
+#     # Если ответ от ERP словарь
+#     if isinstance(answer_erp, dict):
+#         # Если ERP вернул ошибку
+#         if answer_erp.get(name) is False:
+#             logger.error(answer_erp.get(name))
+#             return answer_erp.get('textError')
+#     # Если ответ от ERP список
+#     elif isinstance(answer_erp, list):
+#         last_point = answer_erp[-1]
+#         string_last_point = str(f'{last_point.get("Время")} {last_point.get("Вход")}')
+#         # print(status_sql)
+#         # print(type(status_sql))
+#         # print(last_point)
+#         # print(type(last_point))
+#         # print(string_last_point)
+#         if status_sql != string_last_point:
+#             WorkWithDb().update_checkpoint(string_last_point)
+#             notif_bird(string_last_point)
 
-    name = os.getenv('BIRD_AUTH_KEY')
-    value = os.getenv('BIRD_AUTH_VALUE')
 
-    status_sql = WorkWithDb().check_door()[0]
-    answer_erp = ExchangeWithErp({name: value}).in_out()
-    # print(status_sql)
-    # print(answer_erp)
-
-    # Если ответ от ERP словарь
-    if isinstance(answer_erp, dict):
-        # Если ERP вернул ошибку
-        if answer_erp.get(name) is False:
-            logger.error(answer_erp.get(name))
-            return answer_erp.get('textError')
-    # Если ответ от ERP список
-    elif isinstance(answer_erp, list):
-        last_point = answer_erp[-1]
-        string_last_point = str(f'{last_point.get("Время")} {last_point.get("Вход")}')
-        # print(status_sql)
-        # print(type(status_sql))
-        # print(last_point)
-        # print(type(last_point))
-        # print(string_last_point)
-        if status_sql != string_last_point:
-            WorkWithDb().update_checkpoint(string_last_point)
-            notif_bird(string_last_point)
-
-
-def notif_bird(last_point):
+def notif_bird():
     """Уведомляет о чекпоинте"""
 
-    logger.debug(f"Checkpoint notification details: {last_point}")
-    list_last_point = last_point.split(' ')
-    list_observ_doors = [
-        'Администрация Офис 1 Этаж',
-        'КПП Новое'
-    ]
-    list_users_str = os.getenv('LIST_OBS_BIRD')
-    list_users = ast.literal_eval(list_users_str)
+    string_last_point = ERP().in_out()
+    status_sql = WorkWithDb().check_door()[0]
 
-    direction = list_last_point[2]
-    door = ' '.join(list_last_point[3:])
-    text_notif = ''
+    if status_sql != string_last_point:
+        WorkWithDb().update_checkpoint(string_last_point)
+        logger.debug(f"Checkpoint notification details: {string_last_point}")
+        list_last_point = string_last_point.split(' ')
+        list_observ_doors = [
+            'Администрация Офис 1 Этаж',
+            'КПП Новое'
+        ]
+        list_users_str = os.getenv('LIST_OBS_BIRD')
+        list_users = ast.literal_eval(list_users_str)
 
-    # print(direction, door)
+        direction = list_last_point[2]
+        door = ' '.join(list_last_point[3:])
+        text_notif = ''
 
-    if door in list_observ_doors:
-        if direction == 'Вход':
-            text_notif = 'Пользователь присоединился к чату'
-        elif direction == 'Выход':
-            text_notif = 'Пользователь покинул чат'
+        # print(direction, door)
 
-        # print(text_notif)
+        if door in list_observ_doors:
+            if direction == 'Вход':
+                text_notif = 'Пользователь присоединился к чату'
+            elif direction == 'Выход':
+                text_notif = 'Пользователь покинул чат'
 
-        markup = types.InlineKeyboardMarkup()
+            # print(text_notif)
 
-        name_button = 'Ок'
-        callback_data = 'DELETE'
-        markup.add(types.InlineKeyboardButton(text=name_button, callback_data=callback_data))
+            markup = types.InlineKeyboardMarkup()
 
-        for user_id in list_users:
-            bot.send_message(chat_id=user_id, text=text_notif, reply_markup=markup)
+            name_button = 'Ок'
+            callback_data = 'DELETE'
+            markup.add(types.InlineKeyboardButton(text=name_button, callback_data=callback_data))
+
+            for user_id in list_users:
+                bot.send_message(chat_id=user_id, text=text_notif, reply_markup=markup)
 
 
 def decline_word(number, word_forms):

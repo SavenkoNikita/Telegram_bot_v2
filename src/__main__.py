@@ -27,12 +27,12 @@ from src.handlers import (
 from src.utils.functions import (
     unknown_user,
     schedule_next_run,
-    update_data_door,
     create_top_chart_func, user_data, save_notification_to_db)
+# from src.utils.functions import bot as functions_bot
+from src.utils.interactions_with_services import ExchangeWithErp as ERP
 from src.utils.logger_setup import setup_logger
 from src.utils.sql import StatisticsManager, WorkWithDb
 from src.utils.tracking_sensors import TrackingSensor
-# from src.utils.functions import bot as functions_bot
 
 dotenv.load_dotenv()
 
@@ -159,7 +159,7 @@ schedule.every().day.at('00:00').do(job_every_month, StatisticsManager().reset_f
 schedule.every().monday.at('00:30').do(lambda: WorkWithDb().clean_old_events(30))
 
 # schedule.every().minute.do(update_data_door)
-schedule.every(10).seconds.do(update_data_door)
+schedule.every(10).seconds.do(ERP().in_out)
 schedule.every(1).minutes.do(TrackingSensor().check_all_sensors)
 
 

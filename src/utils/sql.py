@@ -707,6 +707,86 @@ class WorkWithDb:
             result = cursor.fetchone()
             return result[0] if result else None
 
+    def restore_setting_users_table(self):
+        """Восстанавливает таблицу setting_users из данных таблицы users с правильными foreign key"""
+        try:
+            # Сначала убедимся, что таблица users существует
+            if not self.check_table_exists('users'):
+                self.logger.error("Таблица users не существует. Восстановление невозможно.")
+                return False
+
+            # Отключаем проверку внешних ключей временно
+            with self.sqlite_connection as conn:
+                conn.execute("PRAGMA foreign_keys = OFF;")
+
+            # Удаляем старую таблицу setting_users, если она существует
+            if self.check_table_exists('setting_users'):
+                self.logger.info("Удаление старой таблицы setting_users...")
+                with self.sqlite_connection as conn:
+                    conn.execute('DROP TABLE setting_users')
+
+            # Создаем новую таблицу setting_users с правильными foreign key
+            create_query = '''
+            CREATE TABLE setting_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL UNIQUE REFERENCES users(user_id) ON UPDATE CASCADE ON DELETE CASCADE,
+                user_first_name TEXT,
+                user_last_name TEXT,
+                news TEXT DEFAULT "False",
+                baraholka TEXT DEFAULT "False",
+                rights TEXT DEFAULT "user",
+                use_bot TEXT DEFAULT "True",
+                verify_erp TEXT DEFAULT "False"
+            )
+            '''
+            with self.sqlite_connection as conn:
+                conn.execute(create_query)
+
+            # Получаем всех пользователей из таблицы users
+            select_query = 'SELECT user_id, user_first_name, user_last_name FROM users'
+            with self.sqlite_connection as conn:
+                cursor = conn.cursor()
+                cursor.execute(select_query)
+                users = cursor.fetchall()
+
+                # Вставляем данные в setting_users для каждого пользователя
+                for user in users:
+                    user_id, first_name, last_name = user
+                    insert_query = '''
+                        INSERT INTO setting_users 
+                        (user_id, user_first_name, user_last_name) 
+                        VALUES (?, ?, ?)
+                    '''
+                    cursor.execute(insert_query, (user_id, first_name, last_name))
+
+                # Восстанавливаем триггеры
+                for trigger_name, action in [
+                    ('after_user_insert_to_setting_users',
+                     'INSERT INTO setting_users (user_id, user_first_name, user_last_name) '
+                     'VALUES (NEW.user_id, NEW.user_first_name, NEW.user_last_name);'),
+                    ('after_user_insert_to_user_statistics',
+                     'INSERT INTO user_statistics (user_id) VALUES (NEW.user_id);')
+                ]:
+                    create_trigger_query = (f'CREATE TRIGGER IF NOT EXISTS {trigger_name} '
+                                            f'AFTER INSERT ON users '
+                                            f'BEGIN {action} '
+                                            f'END;')
+                    conn.execute(create_trigger_query)
+
+                # Включаем проверку внешних ключей обратно
+                conn.execute("PRAGMA foreign_keys = ON;")
+                conn.commit()
+
+            self.logger.info("Таблица setting_users успешно восстановлена из таблицы users")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Ошибка при восстановлении таблицы setting_users: {e}")
+            # Включаем проверку внешних ключей обратно, даже если произошла ошибка
+            with self.sqlite_connection as conn:
+                conn.execute("PRAGMA foreign_keys = ON;")
+            return False
+
 
 class StatisticsManager:
     """Класс для работы со статистикой пользователей и функций"""
