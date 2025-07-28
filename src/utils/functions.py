@@ -330,21 +330,24 @@ def schedule_next_run():
     """Обновляет расписание заданий"""
 
     def create_random_time(summary=None, name_func='?'):
-        hour = '{:02d}'.format(random.randint(00, 23))
-
         if summary == 'first summary':
-            """Формирует время <06:random(0:59)>"""
-            hour = '06'
+            """Формирует время <random(start_hour-finish_hour)>"""
+            start_hour = 6
+            finish_hour = 9
         elif summary == 'second summary':
-            """Формирует время <08:random(0:59)>"""
-            hour = '08'
+            """Формирует время <random(start_hour-finish_hour)>"""
+            start_hour = 10
+            finish_hour = 13
         elif summary == 'daily summary':
-            """Формирует время <random(14-17):random(0:59)>"""
-            hour = '{:02d}'.format(random.randint(14, 17))
+            """Формирует время <random(start_hour-finish_hour)>"""
+            start_hour = 14
+            finish_hour = 18
         else:
             """Если тег не указан час будет рандомным"""
-            hour = hour
+            start_hour = 00
+            finish_hour = 23
 
+        hour = '{:02d}'.format(random.randint(start_hour, finish_hour))
         minutes = '{:02d}'.format(random.randint(0, 59))
         date_str = datetime.now().strftime("%d.%m.%Y")
         time_str = f'{hour}:{minutes}'
@@ -355,8 +358,8 @@ def schedule_next_run():
     logger.info(f'{datetime.now().strftime("%d.%m.%Y %H:%M:%S")} Updating task schedules:')
 
     list_func = [
-        {'first summary': [notif_of_hero, check_and_send_scheduled_notifications]},
-        # {'second summary': []},
+        {'first summary': [notif_of_hero]},
+        {'second summary': [check_and_send_scheduled_notifications]},
         {'daily summary': [notification_of_dej_tomorrow]}
     ]
 
