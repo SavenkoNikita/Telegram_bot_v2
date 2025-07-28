@@ -740,7 +740,7 @@ def save_notification_to_db(chat_id, text):
 
 
 def check_and_send_scheduled_notifications():
-    """Проверяет запланированные уведомления и рассылает их"""
+    """Отправляет все уведомления на текущую дату, объединяя их в одно сообщение."""
     try:
         db = WorkWithDb()
         if not db.check_table_exists('events'):
@@ -756,19 +756,21 @@ def check_and_send_scheduled_notifications():
             )
             events = cursor.fetchall()
 
-            if events:
-                for event in events:
-                    notification_text = event[0]
-                    notification_for_all_user(notification_text)
+            if not events:
+                return
 
-                    # Удаляем отправленное уведомление
-                    cursor.execute(
-                        'DELETE FROM events WHERE date = ? AND text_event = ?',
-                        (today, notification_text)
-                    )
+            # Объединяем все уведомления в одно
+            combined_text = "\n\n———\n\n".join(event[0] for event in events)
+            notification_for_all_user(f"📅 Уведомления на {today}:\n\n{combined_text}")
+
+            # Удаляем отправленные уведомления
+            cursor.execute(
+                'DELETE FROM events WHERE date = ?',
+                (today,)
+            )
 
     except Exception as e:
-        logger.error(f"Ошибка при проверке запланированных уведомлений: {e}")
+        logger.error(f"Ошибка при отправке уведомлений: {e}")
 
 
 def swap_dej(call):

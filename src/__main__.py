@@ -195,10 +195,18 @@ def job_every_month(func):
 #  Создаёт расписание с рандомным временем для выполнения регулярных задач
 schedule_next_run()
 
+#  Планировщик генерирует новое расписание согласно интервалам
 schedule.every().day.at('00:00').do(schedule_next_run)
+
+#  Отправляет топ-3 самых популярных функций
 schedule.every().day.at('00:00').do(create_top_chart_func)
+
+#  Обновляет счётчики статистики функций за день
 schedule.every().day.at('00:00').do(StatisticsManager().reset_func_stat_day)
+
+#  Обновляет счётчики статистики функций за месяц
 schedule.every().day.at('00:00').do(job_every_month, StatisticsManager().reset_func_stat_month)
+
 # Добавляем очистку старых событий раз в неделю
 schedule.every().monday.at('00:30').do(lambda: WorkWithDb().clean_old_events(30))
 
