@@ -22,12 +22,19 @@ from src.handlers import (
     handle_event_callback,
     handle_name_callback,
     handle_cancel_callback,
-    handle_menu_callback, handle_delete_callback
+    handle_menu_callback,
+    handle_delete_callback,
+    handle_vacation_verify,
+    handle_vacation_cancel
+
 )
 from src.utils.functions import (
     unknown_user,
     schedule_next_run,
-    create_top_chart_func, user_data, save_notification_to_db)
+    create_top_chart_func,
+    user_data,
+    save_notification_to_db,
+    process_inn_input)
 # from src.utils.functions import bot as functions_bot
 from src.utils.interactions_with_services import ExchangeWithErp as ERP
 from src.utils.logger_setup import setup_logger
@@ -102,6 +109,11 @@ def talk(message):
             bot.send_message(chat_id=user_id, text=title_menu, reply_markup=menu)
         return
 
+    # Добавляем обработку ИНН для верификации
+    if user_id in user_data and user_data[user_id].get('waiting_for_inn', False):
+        process_inn_input(message)
+        return
+
     text_answer = 'Я пока не умею реагировать на текст. Доступные функции в /menu'
     bot.reply_to(message, text_answer)
 
@@ -121,6 +133,12 @@ def callback_dispatcher(call):
         elif call.data == "DELETE":
             handle_delete_callback(bot, call)
             return
+        elif call.data == "vacation_verify":
+            handle_vacation_verify(bot, call)
+            return
+        elif call.data == "vacation_cancel":
+            handle_vacation_cancel(bot, call)
+            return
 
         # Статистика активности
         StatisticsManager().collect_statistical_user(user_id=call.from_user.id)
@@ -138,6 +156,14 @@ def callback_dispatcher(call):
     except Exception as error:
         logger.error(f"Callback error: {error}", exc_info=True)
         bot.answer_callback_query(call.id, "⚠️ Произошла ошибка. Попробуйте позже.")
+
+
+@bot.callback_query_handler(func=lambda call: call.data in ["vacation_verify", "vacation_cancel"])
+def handle_vacation_callbacks(call):
+    if call.data == "vacation_verify":
+        handle_vacation_verify(bot, call)
+    elif call.data == "vacation_cancel":
+        handle_vacation_cancel(bot, call)
 
 
 def job_every_month(func):

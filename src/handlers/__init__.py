@@ -6,7 +6,10 @@ from .callbacks import (
     handle_name_callback,
     handle_cancel_callback,
     handle_delete_callback,
-    handle_menu_callback
+    handle_menu_callback,
+    handle_swap_dej_callback,
+    handle_vacation_verify,
+    handle_vacation_cancel
 )
 import logging
 
@@ -21,7 +24,10 @@ __all__ = [
     'handle_name_callback',
     'handle_cancel_callback',
     'handle_delete_callback',
-    'handle_menu_callback'
+    'handle_menu_callback',
+    'handle_swap_dej_callback',
+    'handle_vacation_verify',
+    'handle_vacation_cancel'
 ]
 
 

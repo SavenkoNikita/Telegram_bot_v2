@@ -267,7 +267,7 @@ def post_answer_of_event(dict_answer):
     key_auth = os.getenv("EVENT_HANDLING_KEY")
     value_auth = os.getenv("EVENT_HANDLING_VALUE")
     dict_answer[key_auth] = value_auth
-    answer_ERP = ExchangeWithErp().answer_from_ERP(dict_answer)
+    answer_ERP = ERP().answer_from_ERP(dict_answer)
     logger.debug(f"ERP answer: {answer_ERP}")
     return answer_ERP
 
@@ -670,9 +670,15 @@ def create_notification(call):
     user_id = call.from_user.id
     user_data[user_id] = {'notification_mode': True}
 
-    text_title = 'Выберите дату уведомления:'
-    created_calendar = show_calendar(chat_id=None, title=text_title)
-    return created_calendar
+    now = datetime.now()
+    calendar_markup = calendar.create_calendar(
+        name=calendar_callback.prefix,
+        year=now.year,
+        month=now.month
+    )
+
+    # Возвращаем кортеж (текст, клавиатура)
+    return "Выберите дату уведомления:", calendar_markup
 
 
 def ask_for_notification_text(chat_id, selected_date):
@@ -754,3 +760,71 @@ def swap_dej(call):
     from src.handlers.callbacks.swap_dej_handler import handle_swap_dej_callback
     handle_swap_dej_callback(bot, call)
     return "Выберите дежурство для обмена:"
+
+
+def get_vacation_days(call):
+    """Обработчик для кнопки 'Остаток дней отпуска'"""
+    user_id = call.from_user.id
+    db = WorkWithDb()
+
+    # Проверяем статус верификации
+    if db.check_user_status('verify_erp', user_id) == 'True':
+        # Если верифицирован - получаем дни отпуска
+        result = ERP().get_count_days(user_id)
+        if isinstance(result, dict):
+            # Возвращаем словарь с текстом и параметрами форматирования
+            return {
+                'text': result['text'],
+                'parse_mode': result.get('parse_mode', None)
+            }
+        return result  # Возвращаем строку с ошибкой
+    else:
+        # Если не верифицирован - предлагаем верификацию
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("Указать мой ИНН", callback_data="vacation_verify"))
+        markup.add(types.InlineKeyboardButton("Возможно позже", callback_data="vacation_cancel"))
+
+        # Возвращаем кортеж (текст, клавиатура)
+        return (
+            "Для просмотра остатка дней отпуска необходимо пройти верификацию в 1С ERP.\n\n"
+            "Нажмите 'Указать мой ИНН' для продолжения или 'Возможно позже' для отмены.",
+            markup
+        )
+
+
+def handle_vacation_verify(bot, call):
+    """Обработчик для кнопки верификации отпуска"""
+    user_id = call.from_user.id
+    bot.send_message(user_id, "Пожалуйста, введите ваш 12-значный ИНН:")
+    user_data[user_id] = {'waiting_for_inn': True}
+
+
+def handle_vacation_cancel(bot, call):
+    """Обработчик для отмены верификации отпуска"""
+    user_id = call.from_user.id
+    bot.send_message(user_id, "Верификация отменена. Вы можете пройти её позже.")
+    if user_id in user_data:
+        del user_data[user_id]
+
+
+def process_inn_input(message):
+    """Обработка введенного ИНН"""
+    user_id = message.from_user.id
+    inn = message.text.strip()
+
+    if not inn.isdigit() or len(inn) != 12:
+        bot.send_message(user_id, "ИНН должен состоять из 12 цифр. Пожалуйста, введите корректный ИНН:")
+        return
+
+    # Проверяем ИНН через 1С ERP
+    if ERP().verification(message.from_user.id, inn):
+        db = WorkWithDb()
+        db.change_user_settings('verify_erp', 'True', user_id)
+        bot.send_message(user_id, "✅ Верификация прошла успешно! Теперь вы можете узнать остаток дней отпуска.")
+    else:
+        bot.send_message(user_id,
+                         "❌ Верификация не удалась. Пожалуйста, проверьте правильность ИНН и попробуйте позже.")
+
+    if user_id in user_data:
+        del user_data[user_id]
+

@@ -57,7 +57,7 @@ class ExchangeWithErp:
 
     def get_request(self, params):
         """Выполняет GET-запрос к системе 1С."""
-        self.logger.info(f"Отправка GET-запроса: {self.request_get}, параметры: {params}")
+        # self.logger.info(f"Отправка GET-запроса: {self.request_get}, параметры: {params}")
         try:
             request = requests.get(
                 url=self.request_get,
@@ -76,7 +76,7 @@ class ExchangeWithErp:
 
     def post_request(self, params):
         """Выполняет POST-запрос в систему ERP."""
-        self.logger.info(f"Отправка POST-запроса: {self.request_post}, параметры: {params}")
+        # self.logger.info(f"Отправка POST-запроса: {self.request_post}, параметры: {params}")
         try:
             request = requests.post(
                 url=self.request_post,
@@ -118,24 +118,28 @@ class ExchangeWithErp:
             return {'error_text': 'Ошибка обработки ответа'}
 
     def get_count_days(self, user_id):
-        """На вход принимает user_id, запрашивает данные из 1С, и возвращает кол-во накопленных дней отпуска.
-        Если пользователь не уволен, функция вернёт число, во всех остальных случаях 1С вернёт ошибку"""
-
+        """На вход принимает user_id, запрашивает данные из 1С, и возвращает кол-во накопленных дней отпуска."""
         params = {os.getenv('NUMBER'): user_id}
         try:
             self.logger.info("Processing get_count_days response from ERP")
-            if self.get_request(params).ok:
+            response = self.get_request(params)
+            if response.ok:
                 count_day = self.answer_from_ERP(params)
-                decline = decline_word(count_day, ('день', 'дня', 'дней'))
-                message_text = f'На данный момент у вас накоплено ||{count_day} {decline}|| отпуска'
-                return message_text
+                if isinstance(count_day, bool) and not count_day:
+                    return "Не удалось получить данные о днях отпуска"
+
+                decline = decline_word(int(count_day), ('день', 'дня', 'дней'))
+                message_text = f'На данный момент у вас накоплено <tg-spoiler>{count_day} {decline}</tg-spoiler> отпуска'
+                return {
+                    'text': message_text,
+                    'parse_mode': 'HTML'
+                }
             else:
                 error_answer = self.answer_from_ERP(params)
-                error_text = f'При выполнении запроса возникла ошибка "{error_answer}"'
-                self.logger.error(f'{__name__}.{self.get_count_days.__name__}: {error_text}')
-                return error_text
+                return f'При выполнении запроса возникла ошибка: {error_answer}'
         except Exception as error:
-            self.logger.error(error)
+            self.logger.error(f"Error in get_count_days: {error}")
+            return 'Произошла ошибка при получении данных'
 
     def verification(self, user_id, user_inn):
         """Запрос принимает user_id и ИНН пользователя. В случае успеха, обновляет ID Telegram в 1С у пользователя с
@@ -143,7 +147,7 @@ class ExchangeWithErp:
 
         params = {os.getenv('NUMBER'): user_id, os.getenv('VERIFICATION'): user_inn}
         try:
-            self.logger.info("Processing get_count_days response from ERP")
+            # self.logger.info("Processing get_count_days response from ERP")
             if self.get_request(params).ok:
                 result = self.answer_from_ERP(params)
                 return result

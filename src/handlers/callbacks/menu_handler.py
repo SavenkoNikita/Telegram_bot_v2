@@ -20,7 +20,7 @@ def handle_menu_callback(bot, call, menu_key):
         menu = menu_form.menu_storage.get(menu_key)
 
         if not menu:
-            # Обработка callback'ов обмена дежурствами
+            # Обработка специальных callback'ов
             if call.data.startswith("swap_dej_"):
                 from .swap_dej_handler import handle_confirm_swap_dej
                 dej_id = call.data.split("_")[2]
@@ -36,22 +36,46 @@ def handle_menu_callback(bot, call, menu_key):
             bot.answer_callback_query(call.id, "Ошибка: меню не найдено.")
             return
 
+        # Обработка функций меню
         if "function" in menu:
             try:
                 StatisticsManager().collect_statistical_func(name_func=menu_key)
                 result = menu["function"](call)
+
+                # Если функция ничего не вернула - выходим
+                if result is None:
+                    return
+
+                # Обработка разных форматов возвращаемых значений
+                if isinstance(result, dict):
+                    # Словарь с полным описанием сообщения
+                    bot.send_message(
+                        user_id,
+                        text=result.get('text', ''),
+                        parse_mode=result.get('parse_mode'),
+                        reply_markup=result.get('markup')
+                    )
+                elif isinstance(result, tuple) and len(result) == 2:
+                    # Кортеж (текст, клавиатура)
+                    text, markup = result
+                    bot.send_message(user_id, text=text, reply_markup=markup)
+                elif isinstance(result, str):
+                    # Простой текст
+                    bot.send_message(user_id, result)
+
+                # Удаляем исходное сообщение с меню
+                try:
+                    bot.delete_message(call.message.chat.id, call.message.message_id)
+                except Exception as e:
+                    logger.warning(f"Could not delete menu message: {e}")
+
             except Exception as error:
                 logger.exception(f"Error executing menu function {menu_key}: {error}")
                 bot.send_message(user_id, "Произошла ошибка при выполнении команды. Попробуйте снова.")
                 return
 
-            if isinstance(result, dict):
-                text = result.get('text')
-                keyboard = result.get('keyboard')
-                bot.send_message(user_id, text=text, reply_markup=keyboard)
-            else:
-                bot.send_message(user_id, result)
         elif "redirect" in menu:
+            # Обработка перенаправления в другое меню
             user_access_level = WorkWithDb().check_access_level_user(user_id=user_id)
             new_menu_key = menu["redirect"]
             markup = menu_form.create_markup(new_menu_key, user_access_level)
@@ -62,7 +86,9 @@ def handle_menu_callback(bot, call, menu_key):
                     text=menu_form.menu_storage[new_menu_key]["text"],
                     reply_markup=markup
                 )
+
         elif "buttons" in menu:
+            # Обновление текущего меню
             user_access_level = WorkWithDb().check_access_level_user(user_id=user_id)
             markup = menu_form.create_markup(menu_key, user_access_level)
             if markup:
@@ -72,6 +98,7 @@ def handle_menu_callback(bot, call, menu_key):
                     text=menu["text"],
                     reply_markup=markup
                 )
+
     except Exception as error:
         logger.exception(f"Error in menu handler: {error}")
         bot.answer_callback_query(call.id, "⚠️ Произошла ошибка. Попробуйте позже.")

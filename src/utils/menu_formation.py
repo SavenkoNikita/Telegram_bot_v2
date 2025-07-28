@@ -234,7 +234,7 @@ menu_storage = {  # Хранилище меню, подменю и функци�
     "button_get_app_android": {"function": functions.get_app_remit_employee},
     # "button_random": {"function": building_func},
     "button_all_users": {"function": building_func},
-    "button_vacation": {"function": building_func},
+    "button_vacation": {"function": functions.get_vacation_days},
     "button_create_lot": {"function": building_func},
     "button_urgent_message": {"function": building_func},
     "button_sub_bar": {"function": building_func},
