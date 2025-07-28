@@ -188,32 +188,6 @@ menu_storage = {  # Хранилище меню, подменю и функци�
         }
     },
 
-    # "button_create_notif": {
-    #     "text": "Создать уведомление",
-    #     "buttons": {
-    #         "button1": {
-    #             "name": "Для всех",
-    #             "access_level": "admin",
-    #             "callback": "button_notif_all"},
-    #         "button2": {
-    #             "name": "Для подписчиков IT-отдела",
-    #             "access_level": "admin",
-    #             "callback": "button_notif_it"},
-    #         "button3": {
-    #             "name": "Для барахолки",
-    #             "access_level": "admin",
-    #             "callback": "button_notif_bar"},
-    #         "button4": {
-    #             "name": "🔙 Основные функции",
-    #             "access_level": "all",
-    #             "callback": "button_main_functions"},
-    #         "button5": {
-    #             "name": "🏠 Главное меню",
-    #             "access_level": "all",
-    #             "callback": "main_menu"}
-    #     }
-    # },
-
     "button_dej_1": {"function": functions.dej_name},
     "button_dej_2": {"function": functions.list_dej},
     "button_ins_dej": {"function": functions.fill_schedule_dej},

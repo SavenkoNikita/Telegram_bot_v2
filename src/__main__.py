@@ -34,8 +34,8 @@ from src.utils.functions import (
     create_top_chart_func,
     user_data,
     save_notification_to_db,
-    process_inn_input)
-# from src.utils.functions import bot as functions_bot
+    process_inn_input
+)
 from src.utils.interactions_with_services import ExchangeWithErp as ERP
 from src.utils.logger_setup import setup_logger
 from src.utils.sql import StatisticsManager, WorkWithDb
@@ -47,7 +47,6 @@ bot_token = os.getenv('BOT_TOKEN')
 if not bot_token:
     raise ValueError("BOT_TOKEN is missing in environment variables")
 bot = telebot.TeleBot(bot_token)
-# functions_bot = bot  # Передаем экземпляр бота в модуль functions
 
 dev_id = os.getenv('DEV_ID')
 
@@ -89,7 +88,6 @@ def command_handler(message):
             menu = data_menu[1]
             bot.send_message(chat_id=user_id, text=title_menu, reply_markup=menu)
             logger.info(f"Главное меню открыто для пользователя: {username} ({user_id})")
-
         else:
             pass
 
