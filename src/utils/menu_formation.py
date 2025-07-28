@@ -41,31 +41,23 @@ menu_storage = {  # Хранилище меню, подменю и функци�
         "text": "⚙️ Основные функции:",
         "buttons": {
             "button": {
-                "name": "Дежурства в IT",
+                "name": "📅 Дежурства в IT",
                 "access_level": "all",
                 "callback": "button_menu_dej"},
-            # "button1": {
-            #     "name": "Узнать кто дежурный",
-            #     "access_level": "all",
-            #     "callback": "button_dej"},
-            # "button2": {
-            #     "name": "📆 Внести дежурство в календарь",
-            #     "access_level": "admin",
-            #     "callback": "button_ins_dej"},
             "button3": {
-                "name": "Инвентаризация",
+                "name": "📋 Инвентаризация",
                 "access_level": "admin",
                 "callback": "button_invent"},
             "button4": {
-                "name": "Создать уведомление",
+                "name": "🔔 Создать уведомление",
                 "access_level": "admin",
                 "callback": "button_create_notif"},
             "button5": {
-                "name": "📅 Остаток дней отпуска",
+                "name": "🌴 Остаток дней отпуска",
                 "access_level": "all",
                 "callback": "button_vacation"},
             "button6": {
-                "name": "Создать лот",
+                "name": "💰 Создать лот",
                 "access_level": "admin",
                 "callback": "button_create_lot"},
             "button7": {
@@ -82,19 +74,19 @@ menu_storage = {  # Хранилище меню, подменю и функци�
         "text": "🔔 Управление подписками:",
         "buttons": {
             "button1": {
-                "name": "Новости IT-отдела",
+                "name": "📰 Новости IT-отдела",
                 "access_level": "all",
                 "callback": "button_subscribe"},
             "button3": {
-                "name": "Мониторинг дефростеров",
+                "name": "❄️ Мониторинг дефростеров",
                 "access_level": "admin",
                 "callback": "button_defrosters"},
             "button4": {
-                "name": "Мониторинг неисправных датчиков",
+                "name": "📡 Мониторинг неисправных датчиков",
                 "access_level": "admin",
                 "callback": "button_all_sensor"},
             "button5": {
-                "name": "Барахолка",
+                "name": "🛍️ Барахолка",
                 "access_level": "all",
                 "callback": "button_sub_bar"},
             "button6": {
@@ -115,15 +107,15 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "access_level": "all",
                 "callback": "button_get_app_android"},
             "button3": {
-                "name": "Получить список всех пользователей",
+                "name": "👥 Получить список всех пользователей",
                 "access_level": "admin",
                 "callback": "button_all_users"},
             "button4": {
-                "name": "Дать пользователю права админа",
+                "name": "👑 Дать пользователю права админа",
                 "access_level": "admin",
                 "callback": "button_admin"},
             "button5": {
-                "name": "Лишить пользователя прав админа",
+                "name": "👤 Лишить пользователя прав админа",
                 "access_level": "admin",
                 "callback": "button_user"},
             "button6": {
@@ -146,23 +138,23 @@ menu_storage = {  # Хранилище меню, подменю и функци�
 
     # Дежурный
     "button_menu_dej": {
-        "text": "Дежурства в IT:",
+        "text": "📅 Дежурства в IT:",
         "buttons": {
             "button1": {
-                "name": "Узнать кто дежурный",
+                "name": "👤 Узнать кто дежурный",
                 "access_level": "all",
                 "callback": "button_dej"},
             "button2": {
-                "name": "📆 Внести дежурство в календарь",
+                "name": "➕ Внести дежурство в календарь",
                 "access_level": "admin",
                 "callback": "button_ins_dej"},
             "button3": {
                 "name": "🔄 Поменяться дежурством",
                 "access_level": "admin",
                 "callback": "button_swap_dej"},
-            "button4": {  # Новая кнопка
+            "button4": {
                 "name": "📜 Получить историю дежурств",
-                "access_level": "admin",
+                "access_level": "all",
                 "callback": "button_dej_history"},
             "button5": {
                 "name": "🔙 Основные функции",
@@ -175,14 +167,14 @@ menu_storage = {  # Хранилище меню, подменю и функци�
         }
     },
     "button_dej": {
-        "text": "Узнать кто дежурный:",
+        "text": "👤 Узнать кто дежурный:",
         "buttons": {
             "button1": {
-                "name": "Имя следующего дежурного",
+                "name": "🔍 Имя следующего дежурного",
                 "access_level": "all",
                 "callback": "button_dej_1"},
             "button2": {
-                "name": "Список дежурных",
+                "name": "📋 Список дежурных",
                 "access_level": "all",
                 "callback": "button_dej_2"},
             "button3": {
