@@ -2,7 +2,7 @@ from telebot import types
 import logging
 
 from src.utils import functions
-from src.utils.functions import change_status_news, create_notification
+from src.utils.functions import change_status_news, create_notification, create_instant_notification
 
 logger = logging.getLogger(__name__)
 
@@ -202,7 +202,7 @@ menu_storage = {  # Хранилище меню, подменю и функци�
     "button_all_users": {"function": building_func},
     "button_vacation": {"function": functions.get_vacation_days},
     "button_create_lot": {"function": building_func},
-    "button_urgent_message": {"function": building_func},
+    "button_urgent_message": {"function": create_instant_notification},
     "button_sub_bar": {"function": building_func},
     "button_create_notif": {"function": create_notification},
     # "button_notif_it": {"function": create_notification},

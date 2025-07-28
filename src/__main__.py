@@ -34,7 +34,7 @@ from src.utils.functions import (
     create_top_chart_func,
     user_data,
     save_notification_to_db,
-    process_inn_input
+    process_inn_input, notification_for_all_user
 )
 from src.utils.interactions_with_services import ExchangeWithErp as ERP
 from src.utils.logger_setup import setup_logger
@@ -110,6 +110,20 @@ def talk(message):
     # Добавляем обработку ИНН для верификации
     if user_id in user_data and user_data[user_id].get('waiting_for_inn', False):
         process_inn_input(message)
+        return
+
+    # Обработка мгновенного уведомления
+    if user_id in user_data and user_data[user_id].get('notification_mode') == 'instant':
+        text = message.text
+        notification_for_all_user(f"••• Мгновенное уведомление •••\n\n{text}")
+        if user_id in user_data:
+            del user_data[user_id]
+
+        # Возвращаем в главное меню
+        data_menu = process_menu_command(user_id)
+        title_menu = data_menu[0]
+        menu = data_menu[1]
+        bot.send_message(chat_id=user_id, text="Уведомление отправлено!", reply_markup=menu)
         return
 
     text_answer = 'Я пока не умею реагировать на текст. Доступные функции в /menu'

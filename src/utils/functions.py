@@ -861,3 +861,13 @@ def get_dej_history(call):
         result.append(f"{first_date} - {last_date}: {name}")
 
     return "История дежурств за последние 45 дней:\n\n" + "\n".join(result)
+
+
+def create_instant_notification(call):
+    """Инициирует процесс создания мгновенного уведомления"""
+    user_id = call.from_user.id
+    user_data[user_id] = {'notification_mode': 'instant'}  # Отличаем от отложенного уведомления
+
+    # Возвращаем текст запроса
+    return "Введите текст мгновенного уведомления:"
+
