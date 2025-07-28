@@ -166,24 +166,21 @@ class ExchangeWithErp:
         params = {os.getenv('BIRD_AUTH_KEY'): os.getenv('BIRD_AUTH_VALUE')}
         try:
             data = self.answer_from_ERP(params)
-            # status_sql = WorkWithDb().check_door()[0]
 
             self.logger.debug(f"Ответ JSON in_out: {data}")
             if self.get_request(params).ok:
                 if isinstance(data, list):
                     last_point = data[-1]
                     string_last_point = str(f'{last_point.get("Время")} {last_point.get("Вход")}')
-                    return string_last_point
-                    # if status_sql != string_last_point:
-                    #     WorkWithDb().update_checkpoint(string_last_point)
-                    #     notif_bird(string_last_point)
+                    from src.utils.functions import notif_bird
+                    notif_bird(string_last_point)
             return {'error_text': 'Некорректный ответ'}
         except Exception as e:
             self.logger.error(f"Ошибка обработки in_out: {str(e)}")
             return {'error_text': 'Ошибка обработки in_out'}
 
-    def event_handling(self):
-        pass
+    # def event_handling(self):
+    #     pass
 
 
 class WorkWithYouGile:

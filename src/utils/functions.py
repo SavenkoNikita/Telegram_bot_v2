@@ -432,10 +432,10 @@ def get_app_remit_employee(call):
 #             notif_bird(string_last_point)
 
 
-def notif_bird():
+def notif_bird(string_last_point):
     """Уведомляет о чекпоинте"""
 
-    string_last_point = ERP().in_out()
+    # string_last_point = ERP().in_out()
     status_sql = WorkWithDb().check_door()[0]
 
     if status_sql != string_last_point:
