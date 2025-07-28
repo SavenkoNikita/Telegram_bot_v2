@@ -1,6 +1,7 @@
 from telebot import types
 import logging
 
+from src.handlers.callbacks.admin_management import show_user_management
 from src.utils import functions
 from src.utils.functions import change_status_news, create_notification, create_instant_notification
 
@@ -110,14 +111,14 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "name": "👥 Получить список всех пользователей",
                 "access_level": "admin",
                 "callback": "button_all_users"},
-            "button4": {
-                "name": "👑 Дать пользователю права админа",
-                "access_level": "admin",
-                "callback": "button_admin"},
+            # "button4": {
+            #     "name": "👑 Дать пользователю права админа",
+            #     "access_level": "admin",
+            #     "callback": "button_admin"},
             "button5": {
-                "name": "👤 Лишить пользователя прав админа",
+                "name": "👤 Управление правами администраторов",
                 "access_level": "admin",
-                "callback": "button_user"},
+                "callback": "button_manage_admins"},
             "button6": {
                 "name": "🏠 Главное меню",
                 "access_level": "all",
@@ -193,8 +194,8 @@ menu_storage = {  # Хранилище меню, подменю и функци�
     "button_ins_dej": {"function": functions.fill_schedule_dej},
     ###
     "button_invent": {"function": building_func},
-    "button_admin": {"function": building_func},
-    "button_user": {"function": building_func},
+    # "button_admin": {"function": building_func},
+    "button_manage_admins": {"function": show_user_management},
     "button_subscribe": {"function": change_status_news},
     "button_defrosters": {"function": building_func},
     "button_all_sensor": {"function": building_func},

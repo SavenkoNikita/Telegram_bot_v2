@@ -1,6 +1,7 @@
 import logging
 import src.utils.menu_formation as menu_form
 from src.utils.sql import WorkWithDb, StatisticsManager
+from src.handlers.callbacks.admin_management import show_user_management
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,13 @@ def handle_menu_callback(bot, call, menu_key):
         if "function" in menu:
             try:
                 StatisticsManager().collect_statistical_func(name_func=menu_key)
+
+                # Специальная обработка для функции управления администраторами
+                if menu_key == "button_manage_admins":
+                    show_user_management(bot, call)
+                    return
+
+                # Для остальных функций
                 result = menu["function"](call)
 
                 # Если функция ничего не вернула - выходим
@@ -48,7 +56,6 @@ def handle_menu_callback(bot, call, menu_key):
 
                 # Обработка разных форматов возвращаемых значений
                 if isinstance(result, dict):
-                    # Словарь с полным описанием сообщения
                     bot.send_message(
                         user_id,
                         text=result.get('text', ''),
@@ -56,11 +63,9 @@ def handle_menu_callback(bot, call, menu_key):
                         reply_markup=result.get('markup')
                     )
                 elif isinstance(result, tuple) and len(result) == 2:
-                    # Кортеж (текст, клавиатура)
                     text, markup = result
                     bot.send_message(user_id, text=text, reply_markup=markup)
                 elif isinstance(result, str):
-                    # Простой текст
                     bot.send_message(user_id, result)
 
                 # Удаляем исходное сообщение с меню

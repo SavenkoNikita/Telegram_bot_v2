@@ -480,7 +480,7 @@ def decline_word(number, word_forms):
     """
     Функция для склонения слова в зависимости от числа.
 
-    :param number: int, число
+    :param number: Int, число
     :param word_forms: tuple или list, формы слова в порядке:
                        (форма для 1, форма для 2-4, форма для 5-20 и т.д.)
     :return: str, правильная форма слова
@@ -870,4 +870,3 @@ def create_instant_notification(call):
 
     # Возвращаем текст запроса
     return "Введите текст мгновенного уведомления:"
-

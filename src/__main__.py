@@ -25,7 +25,7 @@ from src.handlers import (
     handle_menu_callback,
     handle_delete_callback,
     handle_vacation_verify,
-    handle_vacation_cancel
+    handle_vacation_cancel, handle_promote_to_admin, handle_demote_to_user
 
 )
 from src.utils.functions import (
@@ -150,6 +150,12 @@ def callback_dispatcher(call):
             return
         elif call.data == "vacation_cancel":
             handle_vacation_cancel(bot, call)
+            return
+        elif call.data.startswith("promote_admin_"):
+            handle_promote_to_admin(bot, call)
+            return
+        elif call.data.startswith("demote_user_"):
+            handle_demote_to_user(bot, call)
             return
 
         # Статистика активности

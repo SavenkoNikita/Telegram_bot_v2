@@ -1,6 +1,11 @@
 from .commands.command_start import process_start_command
 from .commands.command_menu import process_menu_command
 from ..utils.functions import create_instant_notification
+from .callbacks.admin_management import (
+    handle_promote_to_admin,
+    handle_demote_to_user,
+    show_user_management
+)
 from .callbacks import (
     handle_calendar_callback,
     handle_event_callback,
@@ -30,6 +35,9 @@ __all__ = [
     'handle_vacation_verify',
     'handle_vacation_cancel',
     'create_instant_notification',
+    'handle_promote_to_admin',
+    'handle_demote_to_user',
+    'show_user_management'
 ]
 
 

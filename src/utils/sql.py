@@ -802,6 +802,48 @@ class WorkWithDb:
             cursor = conn.execute(query)
             return cursor.fetchall()
 
+    def promote_to_admin(self, user_id):
+        """Дает пользователю права администратора"""
+        try:
+            update_query = 'UPDATE setting_users SET rights = "admin" WHERE user_id = ?'
+            with self.sqlite_connection as conn:
+                conn.execute(update_query, (user_id,))
+                conn.commit()
+            return True
+        except Exception as e:
+            self.logger.error(f"Ошибка при повышении прав пользователя {user_id}: {e}")
+            return False
+
+    def demote_to_user(self, user_id):
+        """Лишает пользователя прав администратора"""
+        try:
+            update_query = 'UPDATE setting_users SET rights = "user" WHERE user_id = ?'
+            with self.sqlite_connection as conn:
+                conn.execute(update_query, (user_id,))
+                conn.commit()
+            return True
+        except Exception as e:
+            self.logger.error(f"Ошибка при понижении прав пользователя {user_id}: {e}")
+            return False
+
+    def get_user_list(self, access_level=None):
+        """Возвращает список пользователей с возможностью фильтрации по уровню доступа"""
+        try:
+            query = ('SELECT u.user_id, u.user_first_name, u.user_last_name, s.rights '
+                     'FROM users u JOIN setting_users s ON u.user_id = s.user_id')
+            params = ()
+
+            if access_level:
+                query += ' WHERE s.rights = ?'
+                params = (access_level,)
+
+            with self.sqlite_connection as conn:
+                cursor = conn.execute(query, params)
+                return cursor.fetchall()
+        except Exception as e:
+            self.logger.error(f"Ошибка при получении списка пользователей: {e}")
+            return []
+
 
 class StatisticsManager:
     """Класс для работы со статистикой пользователей и функций"""
