@@ -5,6 +5,7 @@ from .cancel_handler import handle_cancel_callback, handle_delete_callback
 from .menu_handler import handle_menu_callback
 from .swap_dej_handler import handle_swap_dej_callback
 from .vacation_handler import handle_vacation_verify, handle_vacation_cancel
+from .dej_history_handler import handle_dej_history_callback
 
 __all__ = [
     'handle_calendar_callback',
@@ -15,7 +16,8 @@ __all__ = [
     'handle_menu_callback',
     'handle_swap_dej_callback',
     'handle_vacation_verify',
-    'handle_vacation_cancel'
+    'handle_vacation_cancel',
+    'handle_dej_history_callback'
 ]
 
 

@@ -787,6 +787,21 @@ class WorkWithDb:
                 conn.execute("PRAGMA foreign_keys = ON;")
             return False
 
+    def get_dej_history(self):
+        """Возвращает историю дежурств за последние 45 дней"""
+        self.create_table_if_not('duty_schedule')
+
+        query = """
+            SELECT first_date, last_date, user_first_name 
+            FROM duty_schedule 
+            WHERE first_date >= DATE('now', '-45 days') 
+            ORDER BY first_date ASC
+        """
+
+        with self.sqlite_connection as conn:
+            cursor = conn.execute(query)
+            return cursor.fetchall()
+
 
 class StatisticsManager:
     """Класс для работы со статистикой пользователей и функций"""

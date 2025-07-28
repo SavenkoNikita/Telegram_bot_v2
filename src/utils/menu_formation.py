@@ -160,11 +160,15 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "name": "🔄 Поменяться дежурством",
                 "access_level": "admin",
                 "callback": "button_swap_dej"},
-            "button4": {
+            "button4": {  # Новая кнопка
+                "name": "📜 Получить историю дежурств",
+                "access_level": "admin",
+                "callback": "button_dej_history"},
+            "button5": {
                 "name": "🔙 Основные функции",
                 "access_level": "all",
                 "callback": "button_main_functions"},
-            "button5": {
+            "button6": {
                 "name": "🏠 Главное меню",
                 "access_level": "all",
                 "callback": "main_menu"}
@@ -228,11 +232,7 @@ menu_storage = {  # Хранилище меню, подменю и функци�
     "button_subscribe": {"function": change_status_news},
     "button_defrosters": {"function": building_func},
     "button_all_sensor": {"function": building_func},
-    # "button_log_out": {"function": building_func},
-    # "button_sticker": {"function": building_func},
-    # "button_feed_back": {"function": building_func},
     "button_get_app_android": {"function": functions.get_app_remit_employee},
-    # "button_random": {"function": building_func},
     "button_all_users": {"function": building_func},
     "button_vacation": {"function": functions.get_vacation_days},
     "button_create_lot": {"function": building_func},
@@ -241,7 +241,8 @@ menu_storage = {  # Хранилище меню, подменю и функци�
     "button_create_notif": {"function": create_notification},
     # "button_notif_it": {"function": create_notification},
     # "button_notif_bar": {"function": create_notification},
-    "button_swap_dej": {"function": functions.swap_dej}
+    "button_swap_dej": {"function": functions.swap_dej},
+    "button_dej_history": {"function": functions.get_dej_history}
 }
 
 new_menu_storage = {

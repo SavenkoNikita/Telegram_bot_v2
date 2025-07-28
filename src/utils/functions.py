@@ -162,10 +162,23 @@ def list_dej(call):
 
 def fill_schedule_dej(call):
     """Заполняет шапку календаря, формирует клавиатуру и возвращает результат"""
+    user_id = call.from_user.id
+    user_data[user_id] = {'calendar_mode': 'range'}  # Устанавливаем режим выбора диапазона
 
     text_title = 'Выберите дату начала дежурства:'
-    created_calendar = show_calendar(chat_id=None, title=text_title, select_range=True)
-    return created_calendar
+    now = datetime.now()
+    calendar_markup = calendar.create_calendar(
+        name=calendar_callback.prefix,
+        year=now.year,
+        month=now.month
+    )
+
+    # Отправляем сообщение с календарём
+    bot.send_message(
+        chat_id=call.message.chat.id,
+        text=text_title,
+        reply_markup=calendar_markup
+    )
 
 
 # def show_calendar(chat_id=None, title=None):
@@ -828,3 +841,20 @@ def process_inn_input(message):
     if user_id in user_data:
         del user_data[user_id]
 
+
+def get_dej_history(call):
+    """Возвращает историю дежурств за последние 45 дней"""
+    db = WorkWithDb()
+    history = db.get_dej_history()
+
+    if not history:
+        return "История дежурств за последние 45 дней не найдена."
+
+    result = []
+    for item in history:
+        first_date = datetime.strptime(item[0], '%Y-%m-%d').strftime('%d.%m.%Y')
+        last_date = datetime.strptime(item[1], '%Y-%m-%d').strftime('%d.%m.%Y')
+        name = item[2]
+        result.append(f"{first_date} - {last_date}: {name}")
+
+    return "История дежурств за последние 45 дней:\n\n" + "\n".join(result)
