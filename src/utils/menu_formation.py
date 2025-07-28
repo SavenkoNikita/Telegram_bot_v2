@@ -78,14 +78,14 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "name": "📰 Новости IT-отдела",
                 "access_level": "all",
                 "callback": "button_subscribe"},
-            "button3": {
-                "name": "❄️ Мониторинг дефростеров",
-                "access_level": "admin",
-                "callback": "button_defrosters"},
-            "button4": {
-                "name": "📡 Мониторинг неисправных датчиков",
-                "access_level": "admin",
-                "callback": "button_all_sensor"},
+            # "button3": {
+            #     "name": "❄️ Мониторинг дефростеров",
+            #     "access_level": "admin",
+            #     "callback": "button_defrosters"},
+            # "button4": {
+            #     "name": "📡 Мониторинг неисправных датчиков",
+            #     "access_level": "admin",
+            #     "callback": "button_all_sensor"},
             "button5": {
                 "name": "🛍️ Барахолка",
                 "access_level": "all",
@@ -155,7 +155,7 @@ menu_storage = {  # Хранилище меню, подменю и функци�
                 "callback": "button_swap_dej"},
             "button4": {
                 "name": "📜 Получить историю дежурств",
-                "access_level": "all",
+                "access_level": "admin",
                 "callback": "button_dej_history"},
             "button5": {
                 "name": "🔙 Основные функции",
@@ -200,7 +200,7 @@ menu_storage = {  # Хранилище меню, подменю и функци�
     "button_defrosters": {"function": building_func},
     "button_all_sensor": {"function": building_func},
     "button_get_app_android": {"function": functions.get_app_remit_employee},
-    "button_all_users": {"function": building_func},
+    "button_all_users": {"function": functions.get_all_users},
     "button_vacation": {"function": functions.get_vacation_days},
     "button_create_lot": {"function": building_func},
     "button_urgent_message": {"function": create_instant_notification},

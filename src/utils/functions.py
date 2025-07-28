@@ -870,3 +870,28 @@ def create_instant_notification(call):
 
     # Возвращаем текст запроса
     return "Введите текст мгновенного уведомления:"
+
+
+def get_all_users(call):
+    """Возвращает форматированный список пользователей с кнопкой обновления"""
+    db = WorkWithDb()
+    users = db.get_user_list()
+
+    if not users:
+        return "В базе данных нет пользователей."
+
+    # Сортируем: сначала админы
+    users_sorted = sorted(users, key=lambda x: x[3] != 'admin')
+
+    user_list_text = "📋 <b>Список всех пользователей:</b>\n\n"
+    for idx, user in enumerate(users_sorted, 1):
+        user_id, first_name, last_name, rights = user
+        user_list_text += (
+            f"{idx}. {first_name} {last_name} "
+            f"(ID: {user_id}) — <b>{'👑 Админ' if rights == 'admin' else '👤 Пользователь'}</b>\n"
+        )
+
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🔄 Обновить список", callback_data="button_all_users"))
+
+    return {"text": user_list_text, "parse_mode": "HTML", "reply_markup": markup}
