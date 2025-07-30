@@ -34,7 +34,7 @@ from src.utils.functions import (
     create_top_chart_func,
     user_data,
     save_notification_to_db,
-    process_inn_input, notification_for_all_user, create_top_users_chart
+    process_inn_input, notification_for_all_user, create_top_users_chart, send_unused_functions_report
 )
 from src.utils.interactions_with_services import ExchangeWithErp as ERP
 from src.utils.logger_setup import setup_logger
@@ -186,10 +186,10 @@ def handle_vacation_callbacks(call):
 
 def job_every_month(func):
     """Выполняет функцию если сегодня 1-е число месяца"""
-
     if datetime.datetime.today().day == 1:
         func()
-        return
+        return True
+    return False
 
 
 #  Создаёт расписание с рандомным временем для выполнения регулярных задач
@@ -211,6 +211,9 @@ schedule.every().day.at('00:00').do(create_top_users_chart)
 schedule.every().day.at('00:00').do(StatisticsManager().reset_users_stat_day)
 # Сброс месячной статистики пользователей 1-го числа каждого месяца
 schedule.every().day.at('00:00').do(job_every_month, StatisticsManager().reset_users_stat_month)
+
+# Отправка отчета о неиспользуемых функциях 1-го числа каждого месяца в 00:30
+schedule.every().day.at('00:30').do(job_every_month, send_unused_functions_report)
 
 # Добавляем очистку старых событий раз в неделю
 schedule.every().monday.at('00:30').do(lambda: WorkWithDb().clean_old_events(30))

@@ -940,3 +940,40 @@ def create_top_users_chart():
     logger.info("Exiting method: create_top_users_chart")
 
 
+def send_unused_functions_report():
+    """Формирует и отправляет отчет о неиспользуемых функциях"""
+    logger.info("Preparing unused functions report")
+
+    stats = StatisticsManager().get_unused_functions()
+
+    report_lines = ["📊 *Отчет о неиспользуемых функциях за месяц*"]
+
+    if stats['unused']:
+        report_lines.append("\n🔴 *Ни разу не использовались:*")
+        report_lines.extend(f"- {func[0]}" for func in stats['unused'])
+    else:
+        report_lines.append("\n✅ Все функции использовались хотя бы раз")
+
+    if stats['low_usage']:
+        report_lines.append("\n🟡 *Использовались редко (менее 5 раз):*")
+        report_lines.extend(f"- {func[0]} ({func[1]} раз)" for func in stats['low_usage'])
+
+    if not stats['unused'] and not stats['low_usage']:
+        report_lines.append("\n🎉 Все функции активно используются!")
+
+    report_text = "\n".join(report_lines)
+
+    # Добавляем рекомендации по удалению
+    if stats['unused']:
+        report_text += "\n\n*Рекомендации:*\n"
+        report_text += "Рассмотрите возможность удаления неиспользуемых функций:\n"
+        report_text += "\n".join(f"- {func[0]}" for func in stats['unused'])
+
+    bot.send_message(
+        chat_id=id_dev,
+        text=report_text,
+        parse_mode="Markdown"
+    )
+    logger.info("Unused functions report sent")
+
+

@@ -986,3 +986,34 @@ class StatisticsManager:
         self.logger.info("Resetting monthly users statistics.")
         self.reset_users_stat('month')
 
+    def get_unused_functions(self, days=30):
+        """Возвращает список функций, которыми не пользовались за указанный период"""
+        self.logger.info(f"Fetching unused functions for last {days} days")
+
+        query = """
+            SELECT fs.name, fs.month as usage_count
+            FROM function_statistics fs
+            WHERE fs.month = 0
+            ORDER BY fs.name
+        """
+
+        with self.sqlite_connection as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            unused = cursor.fetchall()
+
+            # Получаем функции с низкой активностью (например, менее 5 использований)
+            query_low_usage = """
+                SELECT fs.name, fs.month as usage_count
+                FROM function_statistics fs
+                WHERE fs.month > 0 AND fs.month < 5
+                ORDER BY fs.month, fs.name
+            """
+            cursor.execute(query_low_usage)
+            low_usage = cursor.fetchall()
+
+            return {
+                'unused': unused,
+                'low_usage': low_usage
+            }
+
