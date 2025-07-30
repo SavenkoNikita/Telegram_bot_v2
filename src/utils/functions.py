@@ -897,3 +897,46 @@ def get_all_users(call):
     markup.add(types.InlineKeyboardButton("🔄 Обновить список", callback_data="button_all_users"))
 
     return {"text": user_list_text, "parse_mode": "HTML", "reply_markup": markup}
+
+
+def formation_of_the_users_rating_text(list_from_db):
+    """Принимает лист с результатами из БД и составляет из него текст с рейтингом пользователей"""
+    if not list_from_db:
+        logger.warning('Нет данных')
+        return 'Нет данных'
+
+    return '\n'.join(
+        f"{idx + 1} место: {name} - {count} {decline_word(count, ('действие', 'действия', 'действий'))}"
+        for idx, (name, count) in enumerate(list_from_db)
+    )
+
+
+def create_top_users_chart():
+    """Формирует рейтинг топ 3 самых активных пользователей"""
+    logger.info("Entering method: create_top_users_chart")
+    heading = '••• ТОП АКТИВНЫХ ПОЛЬЗОВАТЕЛЕЙ •••'
+
+    list_db_today = StatisticsManager().get_top_users_stat_day()
+    text_top_chart_day = formation_of_the_users_rating_text(list_db_today)
+    title_day = f'• топ 3 за день •\nНет данных для формирования рейтинга'
+    if text_top_chart_day:
+        title_day = f'• топ 3 за день •\n{text_top_chart_day}'
+
+    list_db_month = StatisticsManager().get_top_users_stat_month()
+    text_top_chart_month = formation_of_the_users_rating_text(list_db_month)
+    title_month = f'• топ 3 за месяц •\nНет данных для формирования рейтинга'
+    if text_top_chart_month:
+        title_month = f'• топ 3 за месяц •\n{text_top_chart_month}'
+
+    list_db_all_time = StatisticsManager().get_top_users_stat_all_time()
+    text_top_chart_all_time = formation_of_the_users_rating_text(list_db_all_time)
+    title_all_time = f'• топ 3 за всё время •\nНет данных для формирования рейтинга'
+    if text_top_chart_all_time:
+        title_all_time = f'• топ 3 за всё время •\n{text_top_chart_all_time}'
+
+    text_all_rating = '\n\n'.join([heading, title_day, title_month, title_all_time])
+
+    bot.send_message(chat_id=id_dev, text=text_all_rating)
+    logger.info("Exiting method: create_top_users_chart")
+
+

@@ -34,7 +34,7 @@ from src.utils.functions import (
     create_top_chart_func,
     user_data,
     save_notification_to_db,
-    process_inn_input, notification_for_all_user
+    process_inn_input, notification_for_all_user, create_top_users_chart
 )
 from src.utils.interactions_with_services import ExchangeWithErp as ERP
 from src.utils.logger_setup import setup_logger
@@ -200,12 +200,17 @@ schedule.every().day.at('00:00').do(schedule_next_run)
 
 #  Отправляет топ-3 самых популярных функций
 schedule.every().day.at('00:00').do(create_top_chart_func)
-
 #  Обновляет счётчики статистики функций за день
 schedule.every().day.at('00:00').do(StatisticsManager().reset_func_stat_day)
-
 #  Обновляет счётчики статистики функций за месяц
 schedule.every().day.at('00:00').do(job_every_month, StatisticsManager().reset_func_stat_month)
+
+# Отправка топа активных пользователей
+schedule.every().day.at('00:00').do(create_top_users_chart)
+# Сброс дневной статистики пользователей в полночь
+schedule.every().day.at('00:00').do(StatisticsManager().reset_users_stat_day)
+# Сброс месячной статистики пользователей 1-го числа каждого месяца
+schedule.every().day.at('00:00').do(job_every_month, StatisticsManager().reset_users_stat_month)
 
 # Добавляем очистку старых событий раз в неделю
 schedule.every().monday.at('00:30').do(lambda: WorkWithDb().clean_old_events(30))

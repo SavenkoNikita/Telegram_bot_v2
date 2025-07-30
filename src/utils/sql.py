@@ -934,3 +934,55 @@ class StatisticsManager:
             cursor.execute(insert_query, (name_func,))
             conn.commit()  # Ensuring the changes are committed
             self.logger.debug(f"Function statistics updated for: {name_func}")
+
+    def get_top_users_stat(self, column):
+        """Достаёт топ-3 самых активных пользователей за указанный период"""
+        self.logger.debug(f"Fetching top-3 users for column: {column}")
+        select_query = (f'SELECT u.user_first_name, us.{column} '
+                        f'FROM user_statistics us '
+                        f'JOIN users u ON us.user_id = u.user_id '
+                        f'WHERE us.{column} > 0 '
+                        f'ORDER BY us.{column} DESC '
+                        f'LIMIT 3')
+        with self.sqlite_connection as conn:
+            cursor = conn.cursor()
+            cursor.execute(select_query)
+            result = cursor.fetchall()
+            self.logger.debug(f"Query executed: {select_query}. Result: {result}")
+            return result or []
+
+    def get_top_users_stat_day(self):
+        """Достаёт топ-3 самых активных пользователей за день"""
+        self.logger.info("Fetching top-3 users for today.")
+        return self.get_top_users_stat('today')
+
+    def get_top_users_stat_month(self):
+        """Достаёт топ-3 самых активных пользователей за месяц"""
+        self.logger.info("Fetching top-3 users for the month.")
+        return self.get_top_users_stat('month')
+
+    def get_top_users_stat_all_time(self):
+        """Достаёт топ-3 самых активных пользователей за все время"""
+        self.logger.info("Fetching top-3 users for all time.")
+        return self.get_top_users_stat('all_time')
+
+    def reset_users_stat(self, column):
+        """Обнуляет счетчики активности пользователей в указанной колонке"""
+        self.logger.warning(f"Resetting users statistics for column: {column}")
+        update_query = f'UPDATE user_statistics SET {column} = 0'
+        with self.sqlite_connection as conn:
+            cursor = conn.cursor()
+            cursor.execute(update_query)
+            conn.commit()
+        self.logger.debug(f"Users statistics reset query executed: {update_query}")
+
+    def reset_users_stat_day(self):
+        """Обнуляет дневную статистику активности пользователей"""
+        self.logger.info("Resetting daily users statistics.")
+        self.reset_users_stat('today')
+
+    def reset_users_stat_month(self):
+        """Обнуляет месячную статистику активности пользователей"""
+        self.logger.info("Resetting monthly users statistics.")
+        self.reset_users_stat('month')
+
