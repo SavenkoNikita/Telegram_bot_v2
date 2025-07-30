@@ -1,3 +1,4 @@
+import logging
 import os
 import urllib.error
 import urllib.request
@@ -13,6 +14,8 @@ dotenv.load_dotenv()
 
 class TrackingSensor:
     """Мониторинг неисправных датчиков"""
+
+    logger = logging.getLogger("Tracking_Sensor")
 
     def __init__(self):
         # Добавляем проверку на наличие переменной окружения
@@ -53,13 +56,16 @@ class TrackingSensor:
                 return sensor_data
 
         except urllib.error.URLError as e:
-            print(f'Нет соединения с {ip_host}: {e}')
+            self.logger.exception(f'{Exception.__name__}: Нет соединения с {ip_host}: {e}')
+            # print(f'Нет соединения с {ip_host}: {e}')
             return None
         except ET.ParseError as e:
-            print(f'Ошибка парсинга XML с {ip_host}: {e}')
+            self.logger.exception(f'{Exception.__name__}: Ошибка парсинга XML с {ip_host}: {e}')
+            # print(f'Ошибка парсинга XML с {ip_host}: {e}')
             return None
         except Exception as e:
-            print(f'Неизвестная ошибка при обработке {ip_host}: {e}')
+            self.logger.exception(f'{Exception.__name__}: Неизвестная ошибка при обработке {ip_host}: {e}')
+            # print(f'Неизвестная ошибка при обработке {ip_host}: {e}')
             return None
 
     # def get_data(self) -> List[List[str]]:
@@ -192,14 +198,18 @@ class TrackingSensor:
                     try:
                         clean_value = float(value)
                     except ValueError:
-                        print(f"Некорректное значение датчика {clean_name}: {value}")
+                        self.logger.exception(
+                            f'{Exception.__name__}: Некорректное значение датчика {clean_name}: {value}')
+                        # print(f"Некорректное значение датчика {clean_name}: {value}")
                         continue
 
                     # Проверяем ID сенсора
                     try:
                         sensor_id = int(id_sensor)
                     except ValueError:
-                        print(f"Некорректный ID датчика {clean_name}: {id_sensor}")
+                        self.logger.exception(
+                            f'{Exception.__name__}: Некорректный ID датчика {clean_name}: {id_sensor}')
+                        # print(f"Некорректный ID датчика {clean_name}: {id_sensor}")
                         continue
 
                     DB().update_data_sensors(
@@ -210,4 +220,7 @@ class TrackingSensor:
                     )
 
                 except Exception as e:
-                    print(f"Ошибка при обработке датчика {sensor.get('name', 'unknown')} с {ip}: {str(e)}")
+                    self.logger.exception(
+                        f'{Exception.__name__}: '
+                        f'Ошибка при обработке датчика {sensor.get("name", "unknown")} с {ip}: {str(e)}')
+                    # print(f"Ошибка при обработке датчика {sensor.get('name', 'unknown')} с {ip}: {str(e)}")

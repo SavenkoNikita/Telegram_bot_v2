@@ -519,7 +519,8 @@ class WorkWithDb:
                                 'WHERE name_sensor=?',
                                 (id_sensor, last_value_float, ip_host, now_str, now_str, name_sensor)
                             )
-                            print(f"Зафиксирована неисправность датчика {name_sensor}")
+                            self.logger.info(f'Зафиксирована неисправность датчика {name_sensor}')
+                            # print(f"Зафиксирована неисправность датчика {name_sensor}")
                         else:
                             # Неисправность продолжается
                             breakdown_date = datetime.datetime.strptime(existing_breakdown, "%Y-%m-%d %H:%M:%S")
@@ -563,9 +564,12 @@ class WorkWithDb:
                                 # Выполняем задачу в YouGile перед очисткой полей
                                 try:
                                     YouGile().complete_task(id_task=existing_task)
-                                    print(f"Задача YouGile {existing_task} для датчика {name_sensor} выполнена")
+                                    self.logger.info(
+                                        f'Задача YouGile {existing_task} для датчика {name_sensor} выполнена')
+                                    # print(f"Задача YouGile {existing_task} для датчика {name_sensor} выполнена")
                                 except Exception as e:
-                                    print(f"Ошибка при выполнении задачи YouGile: {str(e)}")
+                                    self.logger.info(f'Ошибка при выполнении задачи YouGile: {str(e)}')
+                                    # print(f"Ошибка при выполнении задачи YouGile: {str(e)}")
 
                             # Очищаем поля неисправности
                             cursor.execute(
@@ -575,7 +579,8 @@ class WorkWithDb:
                                 'WHERE name_sensor=?',
                                 (id_sensor, last_value_float, ip_host, now_str, name_sensor)
                             )
-                            print(f"Датчик {name_sensor} восстановлен")
+                            self.logger.info(f'Датчик {name_sensor} восстановлен')
+                            # print(f"Датчик {name_sensor} восстановлен")
                         else:
                             # Просто обновление данных
                             cursor.execute(
@@ -588,10 +593,12 @@ class WorkWithDb:
                 conn.commit()
 
             except sqlite3.Error as e:
-                print(f"Ошибка базы данных при обработке датчика {name_sensor}: {str(e)}")
+                self.logger.exception(f'Ошибка базы данных при обработке датчика {name_sensor}: {str(e)}')
+                # print(f"Ошибка базы данных при обработке датчика {name_sensor}: {str(e)}")
                 conn.rollback()
             except Exception as e:
-                print(f"Неожиданная ошибка при обработке датчика {name_sensor}: {str(e)}")
+                self.logger.exception(f'Неожиданная ошибка при обработке датчика {name_sensor}: {str(e)}')
+                # print(f"Неожиданная ошибка при обработке датчика {name_sensor}: {str(e)}")
                 conn.rollback()
 
     def clean_old_events(self, days=30):
