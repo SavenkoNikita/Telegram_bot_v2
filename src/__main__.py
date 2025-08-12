@@ -12,7 +12,7 @@ import requests
 import schedule
 import telebot
 from pygments.lexers import markup
-from telebot_calendar import Calendar, CallbackData
+from telebot_calendar import Calendar, CallbackData, RUSSIAN_LANGUAGE
 
 # Импортируем всё через единый интерфейс handlers
 from src.handlers import (
@@ -34,7 +34,8 @@ from src.utils.functions import (
     create_top_chart_func,
     user_data,
     save_notification_to_db,
-    process_inn_input, notification_for_all_user, create_top_users_chart, send_unused_functions_report
+    process_inn_input, notification_for_all_user, create_top_users_chart, send_unused_functions_report,
+    ask_for_notification_text
 )
 from src.utils.interactions_with_services import ExchangeWithErp as ERP
 from src.utils.logger_setup import setup_logger
@@ -51,12 +52,11 @@ bot = telebot.TeleBot(bot_token)
 dev_id = os.getenv('DEV_ID')
 
 # Инициализация календаря
-calendar = Calendar()
+calendar = Calendar(language=RUSSIAN_LANGUAGE)
 calendar_callback = CallbackData("calendar", "action", "year", "month", "day")
 
-logger = setup_logger(log_file="bot.log", level=logging.INFO)
+logger = setup_logger(level=logging.INFO)
 
-# Add a single console handler if no handlers are present
 if not logger.handlers:
     console_handler = logging.StreamHandler()
     console_formatter = logging.Formatter("%(asctime)s - [%(levelname)s] - %(message)s")
@@ -125,6 +125,9 @@ def talk(message):
         menu = data_menu[1]
         bot.send_message(chat_id=user_id, text="Уведомление отправлено!", reply_markup=menu)
         return
+    # elif user_id in user_data and user_data[user_id].get('notification_mode', True):
+    #     text = message.text
+    #     ask_for_notification_text(chat_id=user_id, selected_date=user_data[user_id].get())
 
     text_answer = 'Я пока не умею реагировать на текст. Доступные функции в /menu'
     bot.reply_to(message, text_answer)

@@ -10,7 +10,8 @@ import schedule
 import telebot
 from requests.auth import HTTPBasicAuth
 from telebot import types
-from telebot_calendar import Calendar, CallbackData
+from telebot_calendar import Calendar, CallbackData, RUSSIAN_LANGUAGE
+from xdg.Config import language
 
 from src.utils.interactions_with_services import ExchangeWithErp as ERP
 from src.utils.logger_setup import setup_logger
@@ -35,7 +36,7 @@ login = os.getenv('LOGIN_AUTH_GET_APP_REMIT_EMPLOYEE')
 passwd = os.getenv('PASS_AUTH_GET_APP_REMIT_EMPLOYEE')
 
 # Инициализация календаря
-calendar = Calendar()
+calendar = Calendar(language=RUSSIAN_LANGUAGE)
 calendar_callback = CallbackData("calendar", "action", "year", "month", "day")
 
 # Глобальные переменные для хранения состояния
@@ -170,7 +171,7 @@ def fill_schedule_dej(call):
     calendar_markup = calendar.create_calendar(
         name=calendar_callback.prefix,
         year=now.year,
-        month=now.month
+        month=now.month,
     )
 
     # Отправляем сообщение с календарём
@@ -369,7 +370,7 @@ def schedule_next_run():
         for element in list_funcs:
             for time_of_day, funcs in element.items():
                 schedule.clear(time_of_day)  # Clear old time
-                logger.info(f'Schedule tasks with tag "{time_of_day}" have been cleared.')
+                logger.info(f'Расписание с тегом "{time_of_day}" очищено.')
                 for func in funcs:
                     (schedule.every().day.at(create_random_time(summary=time_of_day, name_func=func.__name__)).
                      do(func).
@@ -393,46 +394,16 @@ def get_app_remit_employee(call):
     try:
         response = requests.get(url_app, auth=HTTPBasicAuth(login, passwd), timeout=10)
         response.raise_for_status()
+        name_file = 'Ремит_сотрудник.apk'
         bot.send_document(
             chat_id=call.from_user.id,
             document=response.content,
-            visible_file_name="remit_employee.apk",
-            caption="Файл remit_employee.apk успешно загружен."
+            visible_file_name=name_file,
+            caption=f"{name_file} успешно загружен."
         )
     except requests.RequestException as e:
         bot.send_message(chat_id=call.from_user.id, text=f"Ошибка загрузки файла: {str(e)}")
-        logger.error(f"Failed to download the file: {e}")
-
-
-# def update_data_door():
-#     """Актуализирует данные в БД о последней двери"""
-#
-#     # name = os.getenv('BIRD_AUTH_KEY')
-#     # value = os.getenv('BIRD_AUTH_VALUE')
-#
-#     # status_sql = WorkWithDb().check_door()[0]
-#     # answer_erp = ExchangeWithErp().in_out({name: value})
-#     # print(status_sql)
-#     # print(answer_erp)
-#
-#     # Если ответ от ERP словарь
-#     if isinstance(answer_erp, dict):
-#         # Если ERP вернул ошибку
-#         if answer_erp.get(name) is False:
-#             logger.error(answer_erp.get(name))
-#             return answer_erp.get('textError')
-#     # Если ответ от ERP список
-#     elif isinstance(answer_erp, list):
-#         last_point = answer_erp[-1]
-#         string_last_point = str(f'{last_point.get("Время")} {last_point.get("Вход")}')
-#         # print(status_sql)
-#         # print(type(status_sql))
-#         # print(last_point)
-#         # print(type(last_point))
-#         # print(string_last_point)
-#         if status_sql != string_last_point:
-#             WorkWithDb().update_checkpoint(string_last_point)
-#             notif_bird(string_last_point)
+        logger.exception(f"Ошибка загрузки файла: {e}")
 
 
 def notif_bird(string_last_point):
@@ -975,5 +946,3 @@ def send_unused_functions_report():
         parse_mode="Markdown"
     )
     logger.info("Unused functions report sent")
-
-

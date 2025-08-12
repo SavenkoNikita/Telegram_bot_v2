@@ -6,13 +6,10 @@ from requests.auth import HTTPBasicAuth
 import datetime
 import http.client
 import json
-
+import urllib3
 from typing import Optional, Dict
 
-# from samba.dcerpc.dcerpc import response
-
-# from src.utils.functions import decline_word
-
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)  # Отключает ошибки в консоли об отсутствии сертификата
 dotenv.load_dotenv()
 dev_id = os.getenv('DEV_ID')
 
@@ -64,7 +61,8 @@ class ExchangeWithErp:
                 headers={'User-Agent': self.user_agent_val},
                 auth=HTTPBasicAuth(self.login, self.password),
                 params=params,
-                timeout=10
+                timeout=10,
+                verify=False
             )
             # self.logger.error(f'{__name__}.{self.get_request.__name__}({params}):\n'
             #                   f'ответ: {request.json()}\n'

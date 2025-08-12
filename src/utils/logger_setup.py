@@ -2,7 +2,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 
-def setup_logger(log_file: str = "bot.log", level: int = logging.INFO):
+def setup_logger(log_file: str = f"{__file__}.log", level: int = logging.INFO):
     """
     Настраивает и возвращает логгер приложения.
     
