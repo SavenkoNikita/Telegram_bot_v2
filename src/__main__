@@ -1,0 +1,28 @@
+2025-08-11 08:37:29,820 - [INFO] - TelegramBotLogger - Логгер успешно настроен
+2025-08-11 08:37:29,820 - [INFO] - TelegramBotLogger - 11.08.2025 08:37:29 Updating task schedules:
+2025-08-11 08:37:29,820 - [INFO] - TelegramBotLogger - Расписание с тегом "first summary" очищено.
+2025-08-11 08:37:29,820 - [INFO] - TelegramBotLogger - Function "notif_of_hero.tag(first summary)" scheduled to execute on 11.08.2025 at 09:11.
+2025-08-11 08:37:29,821 - [INFO] - TelegramBotLogger - Расписание с тегом "second summary" очищено.
+2025-08-11 08:37:29,821 - [INFO] - TelegramBotLogger - Function "check_and_send_scheduled_notifications.tag(second summary)" scheduled to execute on 11.08.2025 at 13:39.
+2025-08-11 08:37:29,821 - [INFO] - TelegramBotLogger - Расписание с тегом "daily summary" очищено.
+2025-08-11 08:37:29,821 - [INFO] - TelegramBotLogger - Function "notification_of_dej_tomorrow.tag(daily summary)" scheduled to execute on 11.08.2025 at 16:31.
+2025-08-11 08:37:35,045 - [INFO] - TelegramBotLogger - Главное меню открыто для пользователя: nikita_it_remit (1827221970)
+2025-08-11 08:44:23,994 - [INFO] - TelegramBotLogger - Главное меню открыто для пользователя: nikita_it_remit (1827221970)
+2025-08-11 09:11:30,842 - [INFO] - TelegramBotLogger - Entering method: notification_for with focus_group: news, text_message: ••• Новости IT-отдела •••
+
+Если сигналы не сломают Дмитрия, то он получит ценный опыт. Или нервный тик. В любом случае, неделя для Дмитрия обещает быть незабываемой., silent: False
+2025-08-11 09:11:31,620 - [INFO] - TelegramBotLogger - Exiting method: notification_for
+2025-08-11 16:28:06,691 - [INFO] - TelegramBotLogger - Главное меню открыто для пользователя: nikita_it_remit (1827221970)
+2025-08-12 00:01:04,544 - [INFO] - TelegramBotLogger - 12.08.2025 00:01:04 Updating task schedules:
+2025-08-12 00:01:04,544 - [INFO] - TelegramBotLogger - Расписание с тегом "first summary" очищено.
+2025-08-12 00:01:04,544 - [INFO] - TelegramBotLogger - Function "notif_of_hero.tag(first summary)" scheduled to execute on 12.08.2025 at 09:27.
+2025-08-12 00:01:04,545 - [INFO] - TelegramBotLogger - Расписание с тегом "second summary" очищено.
+2025-08-12 00:01:04,545 - [INFO] - TelegramBotLogger - Function "check_and_send_scheduled_notifications.tag(second summary)" scheduled to execute on 12.08.2025 at 10:26.
+2025-08-12 00:01:04,545 - [INFO] - TelegramBotLogger - Расписание с тегом "daily summary" очищено.
+2025-08-12 00:01:04,546 - [INFO] - TelegramBotLogger - Function "notification_of_dej_tomorrow.tag(daily summary)" scheduled to execute on 12.08.2025 at 17:33.
+2025-08-12 00:01:04,546 - [INFO] - TelegramBotLogger - Entering method: create_top_chart_func
+2025-08-12 00:01:04,784 - [INFO] - TelegramBotLogger - Exiting method: create_top_chart_func
+2025-08-12 00:01:04,790 - [INFO] - TelegramBotLogger - Entering method: create_top_users_chart
+2025-08-12 00:01:04,866 - [INFO] - TelegramBotLogger - Exiting method: create_top_users_chart
+2025-08-12 03:46:09,739 - [INFO] - TelegramBotLogger - Сетевая ошибка обнаружена: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=25). Планируем повтор...
+2025-08-12 12:02:00,952 - [INFO] - TelegramBotLogger - Главное меню открыто для пользователя: nikita_it_remit (1827221970)
